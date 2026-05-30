@@ -1,56 +1,61 @@
+PRAGMA foreign_keys = ON;
+
+DROP TABLE IF EXISTS knowledge_doc;
+DROP TABLE IF EXISTS contribution;
+DROP TABLE IF EXISTS query_log;
+DROP TABLE IF EXISTS faq;
+DROP TABLE IF EXISTS admin;
+DROP TABLE IF EXISTS category;
+
 CREATE TABLE category (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description VARCHAR(255)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT
 );
 
 CREATE TABLE faq (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    question VARCHAR(255) NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question TEXT NOT NULL,
     answer TEXT NOT NULL,
-    category_id BIGINT,
-    source_url VARCHAR(500),
-    source_name VARCHAR(100),
-    view_count INT NOT NULL DEFAULT 0,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_faq_category FOREIGN KEY (category_id) REFERENCES category(id)
+    category TEXT NOT NULL,
+    source TEXT,
+    view_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE query_log (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    query_text VARCHAR(255) NOT NULL,
-    matched_faq_id BIGINT,
-    query_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_query_log_faq FOREIGN KEY (matched_faq_id) REFERENCES faq(id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    query_text TEXT NOT NULL,
+    matched_faq_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (matched_faq_id) REFERENCES faq(id)
 );
 
 CREATE TABLE contribution (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    question VARCHAR(255) NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question TEXT NOT NULL,
     suggested_answer TEXT,
-    category_id BIGINT,
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    submit_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    audit_time DATETIME,
-    audit_comment VARCHAR(255),
-    CONSTRAINT fk_contribution_category FOREIGN KEY (category_id) REFERENCES category(id)
+    category TEXT,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE admin_user (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(100) NOT NULL,
-    role VARCHAR(30) NOT NULL DEFAULT 'ADMIN'
+CREATE TABLE admin (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL
 );
 
-CREATE TABLE knowledge_document (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    title VARCHAR(255) NOT NULL,
+CREATE TABLE knowledge_doc (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
     content TEXT NOT NULL,
-    category_id BIGINT,
-    source_url VARCHAR(500),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_knowledge_category FOREIGN KEY (category_id) REFERENCES category(id)
+    category TEXT,
+    source_url TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX idx_faq_category ON faq(category);
+CREATE INDEX idx_faq_question ON faq(question);
+CREATE INDEX idx_query_log_created_at ON query_log(created_at);
+CREATE INDEX idx_contribution_status ON contribution(status);

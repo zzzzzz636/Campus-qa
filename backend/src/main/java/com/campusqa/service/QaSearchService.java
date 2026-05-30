@@ -1,37 +1,83 @@
 package com.campusqa.service;
 
-import java.util.List;
-
 import com.campusqa.dto.QaSearchRequest;
-import com.campusqa.dto.QaSearchResponse;
+import com.campusqa.dto.QaSearchResult;
+import com.campusqa.model.Faq;
+import com.campusqa.repository.FaqRepository;
+import com.campusqa.repository.QueryLogRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
 public class QaSearchService {
 
-    public QaSearchResponse search(QaSearchRequest request) {
+    private final FaqRepository faqRepository;
+    private final QueryLogRepository queryLogRepository;
+
+    public QaSearchService(FaqRepository faqRepository, QueryLogRepository queryLogRepository) {
+        this.faqRepository = faqRepository;
+        this.queryLogRepository = queryLogRepository;
+    }
+
+    @Transactional
+    public QaSearchResult search(QaSearchRequest request) {
         String question = request == null ? "" : request.question();
+        return search(question);
+    }
+
+    @Transactional
+    public QaSearchResult search(String question) {
         if (!StringUtils.hasText(question)) {
-            return new QaSearchResponse(
+            queryLogRepository.save("", null);
+            return new QaSearchResult(
                     "",
-                    "暂未输入问题",
-                    "请输入你想查询的校园生活问题。",
-                    "系统提示",
-                    "系统内置提示",
-                    List.of()
+                    null,
+                    null,
+                    null,
+                    null,
+                    0,
+                    false,
+                    "请输入问题"
             );
         }
 
         String normalized = question.trim();
-        return new QaSearchResponse(
-                normalized,
-                "图书馆什么时候开放？",
-                "图书馆通常在工作日和周末白天开放，具体时间以后续录入的学校图书馆公告为准。",
-                "图书馆",
-                "第一周模拟 FAQ 数据",
-                List.of("图书馆怎么借书？", "图书馆座位需要预约吗？", "校园卡丢了怎么办？")
+
+        return faqRepository.search(normalized).stream()
+                .findFirst()
+                .map(faq -> foundResult(normalized, faq))
+                .orElseGet(() -> notFoundResult(normalized));
+    }
+
+    private QaSearchResult foundResult(String input, Faq faq) {
+        faqRepository.incrementViewCount(faq.id());
+        queryLogRepository.save(input, faq.id());
+
+        int updatedViewCount = faq.viewCount() == null ? 1 : faq.viewCount() + 1;
+        return new QaSearchResult(
+                input,
+                faq.question(),
+                faq.answer(),
+                faq.category(),
+                faq.source(),
+                updatedViewCount,
+                true,
+                "查询成功"
+        );
+    }
+
+    private QaSearchResult notFoundResult(String input) {
+        queryLogRepository.save(input, null);
+        return new QaSearchResult(
+                input,
+                null,
+                "暂未找到相关答案，请尝试换个关键词或提交问答建议。",
+                null,
+                null,
+                0,
+                false,
+                "暂未找到相关答案，请尝试换个关键词或提交问答建议。"
         );
     }
 }
-

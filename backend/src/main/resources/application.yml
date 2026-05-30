@@ -14,3 +14,9 @@ spring:
     driver-class-name: org.sqlite.JDBC
     hikari:
       maximum-pool-size: 1
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+      schema-locations: file:../database/schema.sql
+      data-locations: file:../database/sample-data.sql
