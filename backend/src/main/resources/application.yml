@@ -9,3 +9,8 @@ server:
 spring:
   application:
     name: campus-qa-backend
+  datasource:
+    url: jdbc:sqlite:../database/campusqa.db
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
