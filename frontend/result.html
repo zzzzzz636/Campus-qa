@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>查询结果 - 校园生活百事通</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">校园生活百事通</a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="contribute.html">补充问题</a>
+      <a href="login.html">管理员登录</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <h2>用户问题</h2>
+      <p id="questionText">图书馆什么时候开放？</p>
+    </section>
+
+    <section class="panel">
+      <h2>匹配答案</h2>
+      <p>图书馆通常在工作日和周末白天开放，具体时间以后续录入的学校图书馆公告为准。第二周接入后端后，此处将展示真实 FAQ 检索结果。</p>
+      <div class="result-meta">
+        <span class="tag">分类：图书馆</span>
+        <span class="tag green">来源：第一周模拟 FAQ 数据</span>
+        <span class="tag orange">匹配方式：关键词匹配</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>相关推荐</h2>
+      <table class="table">
+        <tbody>
+          <tr>
+            <td><a href="result.html?q=图书馆怎么借书">图书馆怎么借书？</a></td>
+            <td>借阅流程、借阅数量和归还规则。</td>
+          </tr>
+          <tr>
+            <td><a href="result.html?q=图书馆座位需要预约吗">图书馆座位需要预约吗？</a></td>
+            <td>座位预约入口和使用规则。</td>
+          </tr>
+          <tr>
+            <td><a href="result.html?q=校园卡丢了怎么办">校园卡丢了怎么办？</a></td>
+            <td>校园卡挂失和补办流程。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>反馈</h2>
+      <div class="actions">
+        <button class="button secondary" type="button">有帮助</button>
+        <a class="button" href="contribute.html">未解决，补充问题</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q) {
+      document.getElementById("questionText").textContent = q;
+    }
+  </script>
+</body>
+</html>
+

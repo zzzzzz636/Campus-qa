@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>补充问题 - 校园生活百事通</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">校园生活百事通</a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a class="active" href="contribute.html">补充问题</a>
+      <a href="login.html">管理员登录</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>提交问答建议</h1>
+      <p>学生提交的新问题会进入待审核列表，管理员审核通过后再进入 FAQ 知识库。</p>
+    </section>
+
+    <section class="panel">
+      <form class="form">
+        <div class="form-row">
+          <label for="question">问题</label>
+          <input class="input" id="question" placeholder="例如：宿舍水电费在哪里查询？">
+        </div>
+        <div class="form-row">
+          <label for="answer">建议答案</label>
+          <textarea class="textarea" id="answer" placeholder="可以填写你知道的答案，也可以留空等待管理员补充。"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="category">分类</label>
+          <select class="select" id="category">
+            <option>食堂</option>
+            <option>图书馆</option>
+            <option>宿舍报修</option>
+            <option>校园卡</option>
+            <option>打印</option>
+            <option>社团</option>
+          </select>
+        </div>
+        <button class="button" type="button">提交，等待管理员审核</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
+

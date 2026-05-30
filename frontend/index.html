@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>校园生活百事通</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">校园生活百事通</a>
+    <nav class="nav">
+      <a class="active" href="index.html">首页</a>
+      <a href="contribute.html">补充问题</a>
+      <a href="login.html">管理员登录</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>校园生活问题快速查询</h1>
+      <p>输入食堂、图书馆、宿舍报修、校园卡、打印、社团等相关问题，系统将从 FAQ 知识库中匹配答案。</p>
+      <form class="search-box" action="result.html">
+        <input class="input" name="q" placeholder="请输入你想查询的校园生活问题" value="图书馆什么时候开放？">
+        <button class="button" type="submit">搜索</button>
+      </form>
+    </section>
+
+    <h2 class="section-title">热门问题</h2>
+    <section class="grid">
+      <a class="card" href="result.html?q=食堂几点关门">
+        <h3>食堂几点关门？</h3>
+        <p>查看各食堂营业时间和晚餐供应安排。</p>
+      </a>
+      <a class="card" href="result.html?q=图书馆怎么借书">
+        <h3>图书馆怎么借书？</h3>
+        <p>了解借阅流程、借阅数量和归还规则。</p>
+      </a>
+      <a class="card" href="result.html?q=宿舍如何报修">
+        <h3>宿舍如何报修？</h3>
+        <p>查看线上报修入口和维修处理流程。</p>
+      </a>
+      <a class="card" href="result.html?q=校园卡丢了怎么办">
+        <h3>校园卡丢了怎么办？</h3>
+        <p>查询挂失、补办和充值相关说明。</p>
+      </a>
+      <a class="card" href="result.html?q=哪里可以打印">
+        <h3>哪里可以打印？</h3>
+        <p>查看校内打印点、开放时间和注意事项。</p>
+      </a>
+      <a class="card" href="result.html?q=怎么加入社团">
+        <h3>怎么加入社团？</h3>
+        <p>了解社团招新时间和报名方式。</p>
+      </a>
+    </section>
+  </main>
+</body>
+</html>
+

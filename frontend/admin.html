@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>后台管理 - 校园生活百事通</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">校园生活百事通</a>
+    <nav class="nav">
+      <a href="index.html">学生端</a>
+      <a class="active" href="admin.html">FAQ 管理</a>
+      <a href="login.html">退出</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>管理员后台</h1>
+      <p>第一周静态原型展示 FAQ 管理、贡献审核、知识导入和热门问题统计入口。</p>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <h2>FAQ 管理</h2>
+        <div class="actions">
+          <input class="input" placeholder="搜索 FAQ">
+          <button class="button" type="button">新增 FAQ</button>
+        </div>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>问题</th>
+            <th>分类</th>
+            <th>来源</th>
+            <th>查询次数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>图书馆什么时候开放？</td>
+            <td>图书馆</td>
+            <td>人工整理</td>
+            <td>18</td>
+            <td>
+              <button class="small-button primary" type="button">编辑</button>
+              <button class="small-button danger" type="button">删除</button>
+            </td>
+          </tr>
+          <tr>
+            <td>校园卡丢了怎么办？</td>
+            <td>校园卡</td>
+            <td>校园卡中心说明</td>
+            <td>12</td>
+            <td>
+              <button class="small-button primary" type="button">编辑</button>
+              <button class="small-button danger" type="button">删除</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3>贡献审核</h3>
+        <p>待审核 3 条，可通过或拒绝学生提交的问答建议。</p>
+      </div>
+      <div class="card">
+        <h3>知识导入</h3>
+        <p>选择 CSV 文件批量导入 FAQ，字段包含问题、答案、分类、来源。</p>
+      </div>
+      <div class="card">
+        <h3>热门统计</h3>
+        <p>根据查询日志展示问题排行榜和分类统计。</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>待审核贡献</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>问题</th>
+            <th>建议答案</th>
+            <th>分类</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>宿舍水电费在哪里查询？</td>
+            <td>可通过学校生活服务平台查询。</td>
+            <td>宿舍报修</td>
+            <td>
+              <button class="small-button primary" type="button">通过</button>
+              <button class="small-button danger" type="button">拒绝</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
+
