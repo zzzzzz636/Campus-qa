@@ -1,7 +1,10 @@
 package com.campusqa.service;
 
+import java.util.List;
+
 import com.campusqa.dto.ContributionAddRequest;
 import com.campusqa.dto.ContributionAddResponse;
+import com.campusqa.model.Contribution;
 import com.campusqa.repository.ContributionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,5 +44,8 @@ public class ContributionService {
 
         return new ContributionAddResponse(true, "提交成功，等待管理员审核", id);
     }
-}
 
+    public List<Contribution> listPending() {
+        return contributionRepository.findByStatus(DEFAULT_STATUS);
+    }
+}

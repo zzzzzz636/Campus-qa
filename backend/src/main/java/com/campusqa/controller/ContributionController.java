@@ -1,8 +1,12 @@
 package com.campusqa.controller;
 
+import java.util.List;
+
 import com.campusqa.dto.ContributionAddRequest;
 import com.campusqa.dto.ContributionAddResponse;
+import com.campusqa.model.Contribution;
 import com.campusqa.service.ContributionService;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,5 +25,10 @@ public class ContributionController {
     @PostMapping("/add")
     public ContributionAddResponse add(@RequestBody(required = false) ContributionAddRequest request) {
         return contributionService.add(request);
+    }
+
+    @GetMapping("/pending")
+    public List<Contribution> pending() {
+        return contributionService.listPending();
     }
 }

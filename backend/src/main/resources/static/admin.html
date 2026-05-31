@@ -51,7 +51,7 @@
     <section class="grid">
       <div class="card">
         <h3>贡献审核</h3>
-        <p>待审核 3 条，可通过或拒绝学生提交的问答建议。</p>
+        <p id="pendingSummary">正在加载待审核贡献...</p>
       </div>
       <div class="card">
         <h3>知识导入</h3>
@@ -74,15 +74,9 @@
             <th>操作</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="contributionTableBody">
           <tr>
-            <td>宿舍水电费在哪里查询？</td>
-            <td>可通过学校生活服务平台查询。</td>
-            <td>宿舍报修</td>
-            <td>
-              <button class="small-button primary" type="button">通过</button>
-              <button class="small-button danger" type="button">拒绝</button>
-            </td>
+            <td colspan="4">正在加载待审核贡献...</td>
           </tr>
         </tbody>
       </table>
@@ -91,8 +85,12 @@
 
   <script>
     const faqTableBody = document.getElementById("faqTableBody");
+    const contributionTableBody = document.getElementById("contributionTableBody");
+    const pendingSummary = document.getElementById("pendingSummary");
 
     loadFaqList();
+    loadPendingContributions();
+    setInterval(loadPendingContributions, 5000);
 
     async function loadFaqList() {
       try {
@@ -123,6 +121,42 @@
           <td>
             <button class="small-button primary" type="button">编辑</button>
             <button class="small-button danger" type="button">删除</button>
+          </td>
+        </tr>
+      `;
+    }
+
+    async function loadPendingContributions() {
+      try {
+        const response = await fetch("/api/contribution/pending");
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const contributions = await response.json();
+        if (!Array.isArray(contributions) || contributions.length === 0) {
+          contributionTableBody.innerHTML = '<tr><td colspan="4">暂无待审核贡献</td></tr>';
+          pendingSummary.textContent = "暂无待审核贡献。";
+          return;
+        }
+
+        contributionTableBody.innerHTML = contributions.map(renderContributionRow).join("");
+        pendingSummary.textContent = `待审核 ${contributions.length} 条，可通过或拒绝学生提交的问答建议。`;
+      } catch (error) {
+        contributionTableBody.innerHTML = '<tr><td colspan="4">待审核贡献加载失败，请确认后端服务已启动。</td></tr>';
+        pendingSummary.textContent = "待审核贡献加载失败，请确认后端服务已启动。";
+      }
+    }
+
+    function renderContributionRow(contribution) {
+      return `
+        <tr>
+          <td>${escapeHtml(contribution.question || "")}</td>
+          <td>${escapeHtml(contribution.suggestedAnswer || "-")}</td>
+          <td>${escapeHtml(contribution.category || "-")}</td>
+          <td>
+            <button class="small-button primary" type="button">通过</button>
+            <button class="small-button danger" type="button">拒绝</button>
           </td>
         </tr>
       `;
