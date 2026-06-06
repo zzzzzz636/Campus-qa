@@ -1,7 +1,11 @@
 package com.campusqa.controller;
 
+import java.util.List;
+
+import com.campusqa.dto.ApiResponse;
 import com.campusqa.dto.QaSearchRequest;
 import com.campusqa.dto.QaSearchResult;
+import com.campusqa.model.Faq;
 import com.campusqa.service.QaSearchService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,5 +32,10 @@ public class QaController {
     @PostMapping("/search")
     public QaSearchResult search(@RequestBody QaSearchRequest request) {
         return qaSearchService.search(request);
+    }
+
+    @GetMapping("/hot")
+    public ApiResponse<List<Faq>> hot(@RequestParam(required = false) Integer limit) {
+        return qaSearchService.hot(limit);
     }
 }

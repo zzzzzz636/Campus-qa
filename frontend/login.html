@@ -23,7 +23,7 @@
     </section>
 
     <section class="panel">
-      <form class="form" action="admin.html">
+      <form class="form" id="loginForm" action="admin.html">
         <div class="form-row">
           <label for="username">账号</label>
           <input class="input" id="username" value="admin">
@@ -33,9 +33,60 @@
           <input class="input" id="password" type="password" value="admin123">
         </div>
         <button class="button" type="submit">登录</button>
+        <div class="notice" id="loginMessage" style="display: none;"></div>
       </form>
     </section>
   </main>
+
+  <script>
+    const loginForm = document.getElementById("loginForm");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const loginMessage = document.getElementById("loginMessage");
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!username || !password) {
+        showMessage("请输入账号和密码");
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/admin/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username,
+            password
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          window.location.href = "admin.html";
+          return;
+        }
+
+        showMessage(data.message || "账号或密码错误");
+      } catch (error) {
+        showMessage("后端服务暂不可用，请确认 Spring Boot 已启动。");
+      }
+    });
+
+    function showMessage(message) {
+      loginMessage.textContent = message;
+      loginMessage.style.display = "block";
+    }
+  </script>
 </body>
 </html>
-

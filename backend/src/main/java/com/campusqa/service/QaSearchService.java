@@ -1,5 +1,8 @@
 package com.campusqa.service;
 
+import java.util.List;
+
+import com.campusqa.dto.ApiResponse;
 import com.campusqa.dto.QaSearchRequest;
 import com.campusqa.dto.QaSearchResult;
 import com.campusqa.model.Faq;
@@ -11,6 +14,9 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class QaSearchService {
+
+    private static final int DEFAULT_HOT_LIMIT = 6;
+    private static final int MAX_HOT_LIMIT = 50;
 
     private final FaqRepository faqRepository;
     private final QueryLogRepository queryLogRepository;
@@ -50,6 +56,10 @@ public class QaSearchService {
                 .orElseGet(() -> notFoundResult(normalized));
     }
 
+    public ApiResponse<List<Faq>> hot(Integer limit) {
+        return ApiResponse.success("查询成功", faqRepository.findHot(normalizeHotLimit(limit)));
+    }
+
     private QaSearchResult foundResult(String input, Faq faq) {
         faqRepository.incrementViewCount(faq.id());
         queryLogRepository.save(input, faq.id());
@@ -79,5 +89,12 @@ public class QaSearchService {
                 false,
                 "暂未找到相关答案，请尝试换个关键词或提交问答建议。"
         );
+    }
+
+    private int normalizeHotLimit(Integer limit) {
+        if (limit == null) {
+            return DEFAULT_HOT_LIMIT;
+        }
+        return Math.max(1, Math.min(limit, MAX_HOT_LIMIT));
     }
 }

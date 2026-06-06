@@ -16,7 +16,7 @@ spring:
       maximum-pool-size: 1
   sql:
     init:
-      mode: always
+      mode: never
       encoding: UTF-8
       schema-locations: file:../database/schema.sql
       data-locations: file:../database/sample-data.sql

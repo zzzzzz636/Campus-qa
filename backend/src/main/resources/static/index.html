@@ -27,7 +27,7 @@
     </section>
 
     <h2 class="section-title">热门问题</h2>
-    <section class="grid">
+    <section class="grid" id="hotQuestionGrid">
       <a class="card" href="result.html?q=食堂几点关门">
         <h3>食堂几点关门？</h3>
         <p>查看各食堂营业时间和晚餐供应安排。</p>
@@ -54,6 +54,51 @@
       </a>
     </section>
   </main>
+
+  <script>
+    const hotQuestionGrid = document.getElementById("hotQuestionGrid");
+
+    loadHotQuestions();
+
+    async function loadHotQuestions() {
+      try {
+        const response = await fetch("/api/qa/hot");
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const hotQuestions = Array.isArray(result) ? result : (result.data || []);
+        if (!Array.isArray(hotQuestions) || hotQuestions.length === 0) {
+          hotQuestionGrid.innerHTML = '<div class="notice">暂无热门问题数据</div>';
+          return;
+        }
+
+        hotQuestionGrid.innerHTML = hotQuestions.map(renderHotQuestion).join("");
+      } catch (error) {
+        hotQuestionGrid.innerHTML = '<div class="notice">热门问题加载失败</div>';
+      }
+    }
+
+    function renderHotQuestion(faq) {
+      const question = faq.question || "";
+      const answer = faq.answer || "点击查看问题答案。";
+      return `
+        <a class="card" href="result.html?q=${encodeURIComponent(question)}">
+          <h3>${escapeHtml(question)}</h3>
+          <p>${escapeHtml(answer)}</p>
+        </a>
+      `;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
 </body>
 </html>
-

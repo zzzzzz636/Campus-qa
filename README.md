@@ -60,12 +60,19 @@ campus-qa/
 database/campusqa.db
 ```
 
-启动后端时会根据以下脚本初始化：
+初始化脚本：
 
 ```text
 database/schema.sql
 database/sample-data.sql
 ```
 
+初始化命令：
+
+```powershell
+python database\init_sqlite.py
+```
+
 `campusqa.db` 是本地生成文件，已通过 `.gitignore` 忽略，不建议提交。
 
+当前 `spring.sql.init.mode` 设置为 `never`，后端启动时不会重建数据库，运行中的用户贡献、查询日志和浏览次数可以保留。

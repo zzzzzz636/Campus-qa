@@ -25,5 +25,17 @@ public class CategoryRepository {
                 )
         );
     }
-}
 
+    public List<Category> findUsedByFaq() {
+        return jdbcTemplate.query(
+                "SELECT DISTINCT c.id, c.name, c.description " +
+                        "FROM category c INNER JOIN faq f ON f.category_id = c.id " +
+                        "WHERE f.enabled = 1 ORDER BY c.name",
+                (rs, rowNum) -> new Category(
+                        rs.getLong("id"),
+                        rs.getString("name"),
+                        rs.getString("description")
+                )
+        );
+    }
+}
