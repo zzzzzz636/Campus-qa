@@ -83,9 +83,10 @@ public class FaqRepository {
                 "SELECT f.id, f.question, f.answer, COALESCE(c.name, '未分类') AS category, " +
                         "f.source, f.view_count, f.created_at " +
                         "FROM faq f LEFT JOIN category c ON f.category_id = c.id " +
-                        "WHERE f.enabled = 1 AND (f.question LIKE ? OR f.answer LIKE ? OR c.name LIKE ?) " +
-                        "ORDER BY f.view_count DESC, f.id DESC",
+                "WHERE f.enabled = 1 AND (f.question LIKE ? OR f.answer LIKE ? OR c.name LIKE ? OR f.source LIKE ?) " +
+                "ORDER BY f.view_count DESC, f.id DESC",
                 FAQ_ROW_MAPPER,
+                pattern,
                 pattern,
                 pattern,
                 pattern
@@ -122,6 +123,18 @@ public class FaqRepository {
 
     public void incrementViewCount(long id) {
         jdbcTemplate.update("UPDATE faq SET view_count = view_count + 1 WHERE id = ?", id);
+    }
+
+    public boolean existsByQuestion(String question) {
+        if (!StringUtils.hasText(question)) {
+            return false;
+        }
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM faq WHERE enabled = 1 AND question = ?",
+                Integer.class,
+                question.trim()
+        );
+        return count != null && count > 0;
     }
 
     public Long save(String question, String answer, String category, String source) {

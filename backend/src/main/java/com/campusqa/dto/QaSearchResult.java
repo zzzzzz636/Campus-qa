@@ -6,9 +6,11 @@ public record QaSearchResult(
         String answer,
         String category,
         String source,
+        String sourceUrl,
         Integer viewCount,
         Boolean found,
+        String sourceType,
+        Integer matchScore,
         String message
 ) {
 }
-

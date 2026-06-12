@@ -42,6 +42,13 @@ INSERT OR IGNORE INTO query_log (id, query_text, matched_faq_id, found) VALUES
 (2, '校园卡丢了怎么办', 11, 1),
 (3, '宿舍怎么报修', 8, 1);
 
-INSERT OR IGNORE INTO knowledge_doc (id, title, content, category_id, source_url) VALUES
-(1, '图书馆开放说明', '图书馆开放时间以图书馆官方公告为准，节假日可能调整。', 2, 'https://example.edu/library'),
-(2, '校历查询说明', '学生可通过教务处网站或学校官网查看校历、教学周和放假安排。', 7, 'https://example.edu/calendar');
+INSERT OR REPLACE INTO knowledge_doc (id, title, content, category, source_url, source_type) VALUES
+(1, '图书馆开放时间说明', '图书馆工作日和周末开放时间以图书馆官网公告为准，考试周可能延长开放时间，节假日开放安排会提前通知。', '图书馆', 'https://example.edu/library/open-time', 'OFFICIAL'),
+(2, '校园卡补办流程', '校园卡丢失后应先通过线上平台或校园卡服务中心挂失，再携带本人有效证件到服务窗口办理补办。', '校园卡', 'https://example.edu/card/reissue', 'OFFICIAL'),
+(3, '宿舍报修办理说明', '宿舍水电、门锁、家具、网络等问题可通过后勤报修平台提交，填写宿舍楼栋、房间号和故障描述后等待处理。', '宿舍报修', 'https://example.edu/logistics/repair', 'CRAWLER'),
+(4, '食堂营业时间汇总', '校内食堂一般覆盖早餐、午餐和晚餐时段，部分窗口提供夜宵服务，具体营业时间以各食堂现场公告为准。', '食堂', 'https://example.edu/canteen/time', 'IMPORT'),
+(5, '学生社团联系方式', '学生可通过校团委公告、社团联合会公众号或社团招新现场获取社团联系方式和报名渠道。', '社团', 'https://example.edu/club/contact', 'MANUAL');
+
+INSERT OR REPLACE INTO import_history (id, file_name, import_type, success_count, fail_count, message) VALUES
+(1, 'week4-knowledge-doc-sample.csv', 'KNOWLEDGE_DOC', 5, 0, '导入知识资料测试数据 5 条'),
+(2, 'official-site-offline-pages', 'OFFLINE_CRAWLER', 2, 0, '离线官网资料解析测试记录');

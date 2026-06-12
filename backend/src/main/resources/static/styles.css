@@ -126,9 +126,23 @@ a {
   background: var(--primary-dark);
 }
 
+.button:disabled,
+.small-button:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.button:disabled:hover {
+  background: var(--primary);
+}
+
 .button.secondary {
   background: #fff;
   color: var(--primary);
+}
+
+.button.secondary:disabled:hover {
+  background: #fff;
 }
 
 .button.danger {
@@ -277,6 +291,18 @@ a {
   color: #1e40af;
 }
 
+.notice.success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.notice.error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
 @media (max-width: 760px) {
   .topbar {
     align-items: flex-start;
@@ -303,4 +329,3 @@ a {
     font-size: 28px;
   }
 }
-

@@ -113,8 +113,112 @@
       </div>
       <div class="card">
         <h3>热门统计</h3>
-        <p>根据查询日志展示问题排行榜和分类统计。</p>
+        <p>根据 FAQ 查询次数展示热门问题。</p>
+        <div id="hotQuestionList" style="margin-top: 10px; color: var(--muted); font-size: 14px;">正在加载热门问题...</div>
       </div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <h2>知识导入</h2>
+        <button class="button secondary" id="importHistoryRefreshButton" type="button">刷新历史</button>
+      </div>
+
+      <div class="grid" style="margin-bottom: 16px;">
+        <div class="form-row">
+          <label for="faqCsvFile">FAQ CSV 文件</label>
+          <input class="input" id="faqCsvFile" type="file" accept=".csv,text/csv">
+          <p>CSV 格式：question,answer,category,source</p>
+          <button class="button" id="csvImportButton" type="button">导入 CSV</button>
+        </div>
+        <div class="form-row" style="grid-column: span 2;">
+          <label for="faqJsonText">JSON 批量导入</label>
+          <textarea class="textarea" id="faqJsonText" placeholder='{"items":[{"question":"图书馆怎么借书？","answer":"学生可凭校园卡办理图书借阅。","category":"图书馆","source":"JSON批量导入"}]}'></textarea>
+          <button class="button" id="jsonImportButton" type="button">批量导入</button>
+        </div>
+      </div>
+
+      <div class="notice" id="importMessage" style="display: none; margin-bottom: 16px;"></div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>id</th>
+            <th>文件名</th>
+            <th>类型</th>
+            <th>成功</th>
+            <th>失败</th>
+            <th>说明</th>
+            <th>时间</th>
+          </tr>
+        </thead>
+        <tbody id="importHistoryTableBody">
+          <tr>
+            <td colspan="7">正在加载导入历史...</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <h2>知识资料库</h2>
+        <div class="actions">
+          <input class="input" id="knowledgeKeyword" placeholder="搜索知识资料">
+          <button class="button" id="knowledgeSearchButton" type="button">搜索</button>
+          <button class="button secondary" id="knowledgeResetButton" type="button">重置</button>
+        </div>
+      </div>
+
+      <form class="form" id="knowledgeForm" style="margin-bottom: 18px;">
+        <input id="knowledgeId" type="hidden">
+        <div class="grid">
+          <div class="form-row">
+            <label for="knowledgeTitle">标题</label>
+            <input class="input" id="knowledgeTitle" placeholder="请输入资料标题">
+          </div>
+          <div class="form-row">
+            <label for="knowledgeCategory">分类</label>
+            <input class="input" id="knowledgeCategory" placeholder="例如：图书馆">
+          </div>
+          <div class="form-row">
+            <label for="knowledgeSourceType">来源类型</label>
+            <input class="input" id="knowledgeSourceType" placeholder="例如：官网爬虫">
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="knowledgeSourceUrl">来源链接</label>
+          <input class="input" id="knowledgeSourceUrl" placeholder="https://www.scut.edu.cn/">
+        </div>
+        <div class="form-row">
+          <label for="knowledgeContent">内容</label>
+          <textarea class="textarea" id="knowledgeContent" placeholder="请输入知识资料正文"></textarea>
+        </div>
+        <div class="actions">
+          <button class="button" id="knowledgeSaveButton" type="submit">新增知识资料</button>
+          <button class="button secondary" id="knowledgeCancelEditButton" type="button" style="display: none;">取消编辑</button>
+        </div>
+        <div class="notice" id="knowledgeMessage" style="display: none;"></div>
+      </form>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>id</th>
+            <th>标题</th>
+            <th>分类</th>
+            <th>来源类型</th>
+            <th>来源链接</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="knowledgeTableBody">
+          <tr>
+            <td colspan="7">正在加载知识资料...</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
     <section class="panel">
@@ -127,13 +231,15 @@
           <tr>
             <th>id</th>
             <th>查询内容</th>
-            <th>匹配 FAQ id</th>
+            <th>匹配类型</th>
+            <th>匹配对象</th>
+            <th>匹配分值</th>
             <th>查询时间</th>
           </tr>
         </thead>
         <tbody id="queryLogTableBody">
           <tr>
-            <td colspan="4">正在加载查询记录...</td>
+            <td colspan="6">正在加载查询记录...</td>
           </tr>
         </tbody>
       </table>
@@ -173,6 +279,28 @@
     const hotQuestionCount = document.getElementById("hotQuestionCount");
     const queryLogTableBody = document.getElementById("queryLogTableBody");
     const queryLogRefreshButton = document.getElementById("queryLogRefreshButton");
+    const hotQuestionList = document.getElementById("hotQuestionList");
+    const faqCsvFile = document.getElementById("faqCsvFile");
+    const csvImportButton = document.getElementById("csvImportButton");
+    const faqJsonText = document.getElementById("faqJsonText");
+    const jsonImportButton = document.getElementById("jsonImportButton");
+    const importMessage = document.getElementById("importMessage");
+    const importHistoryTableBody = document.getElementById("importHistoryTableBody");
+    const importHistoryRefreshButton = document.getElementById("importHistoryRefreshButton");
+    const knowledgeKeyword = document.getElementById("knowledgeKeyword");
+    const knowledgeSearchButton = document.getElementById("knowledgeSearchButton");
+    const knowledgeResetButton = document.getElementById("knowledgeResetButton");
+    const knowledgeForm = document.getElementById("knowledgeForm");
+    const knowledgeId = document.getElementById("knowledgeId");
+    const knowledgeTitle = document.getElementById("knowledgeTitle");
+    const knowledgeContent = document.getElementById("knowledgeContent");
+    const knowledgeCategory = document.getElementById("knowledgeCategory");
+    const knowledgeSourceUrl = document.getElementById("knowledgeSourceUrl");
+    const knowledgeSourceType = document.getElementById("knowledgeSourceType");
+    const knowledgeSaveButton = document.getElementById("knowledgeSaveButton");
+    const knowledgeCancelEditButton = document.getElementById("knowledgeCancelEditButton");
+    const knowledgeMessage = document.getElementById("knowledgeMessage");
+    const knowledgeTableBody = document.getElementById("knowledgeTableBody");
     const faqKeyword = document.getElementById("faqKeyword");
     const faqCategoryFilter = document.getElementById("faqCategoryFilter");
     const faqSearchButton = document.getElementById("faqSearchButton");
@@ -189,20 +317,40 @@
     const faqMessage = document.getElementById("faqMessage");
 
     let currentFaqs = [];
+    let currentKnowledgeDocs = [];
 
     loadStatOverview();
     loadQueryLogs();
+    loadHotQuestions();
+    loadImportHistory();
+    loadKnowledgeList();
     loadCategories();
     loadFaqList();
     loadPendingContributions();
     setInterval(loadPendingContributions, 5000);
 
-    queryLogRefreshButton.addEventListener("click", loadQueryLogs);
-    faqSearchButton.addEventListener("click", () => loadFaqList());
+    queryLogRefreshButton.addEventListener("click", () => withButtonLoading(queryLogRefreshButton, "刷新中...", loadQueryLogs));
+    importHistoryRefreshButton.addEventListener("click", () => withButtonLoading(importHistoryRefreshButton, "刷新中...", loadImportHistory));
+    csvImportButton.addEventListener("click", importCsvFile);
+    jsonImportButton.addEventListener("click", importJsonFaqs);
+    knowledgeSearchButton.addEventListener("click", () => withButtonLoading(knowledgeSearchButton, "搜索中...", loadKnowledgeList));
+    knowledgeResetButton.addEventListener("click", () => {
+      knowledgeKeyword.value = "";
+      showKnowledgeMessage("已重置知识资料搜索条件");
+      loadKnowledgeList();
+    });
+    knowledgeKeyword.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        loadKnowledgeList();
+      }
+    });
+    faqSearchButton.addEventListener("click", () => withButtonLoading(faqSearchButton, "搜索中...", loadFaqList));
     faqCategoryFilter.addEventListener("change", () => loadFaqList());
     faqResetButton.addEventListener("click", () => {
       faqKeyword.value = "";
       faqCategoryFilter.value = "";
+      showFaqMessage("已重置 FAQ 搜索条件");
       loadFaqList();
     });
     faqKeyword.addEventListener("keydown", (event) => {
@@ -226,6 +374,7 @@
       }
 
       const editingId = faqId.value.trim();
+      const previousSaveText = faqSaveButton.textContent;
       const payload = {
         question,
         answer,
@@ -235,6 +384,10 @@
       if (editingId) {
         payload.id = Number(editingId);
       }
+
+      faqSaveButton.disabled = true;
+      faqSaveButton.textContent = editingId ? "保存中..." : "新增中...";
+      showFaqMessage(editingId ? "正在保存 FAQ 修改..." : "正在新增 FAQ...");
 
       try {
         const response = await fetch(editingId ? "/api/faq/update" : "/api/faq/add", {
@@ -260,12 +413,100 @@
         await loadFaqList();
         await loadCategories();
         await loadStatOverview();
+        await loadHotQuestions();
       } catch (error) {
         showFaqMessage("FAQ 保存失败，请确认后端服务已启动。");
+      } finally {
+        faqSaveButton.disabled = false;
+        faqSaveButton.textContent = faqId.value ? previousSaveText : "新增 FAQ";
       }
     });
 
-    faqCancelEditButton.addEventListener("click", resetFaqForm);
+    faqCancelEditButton.addEventListener("click", () => {
+      resetFaqForm();
+      showFaqMessage("已取消编辑");
+    });
+
+    knowledgeForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const title = knowledgeTitle.value.trim();
+      const content = knowledgeContent.value.trim();
+      const category = knowledgeCategory.value.trim();
+      const sourceUrl = knowledgeSourceUrl.value.trim();
+      const sourceType = knowledgeSourceType.value.trim();
+      const editingId = knowledgeId.value.trim();
+
+      if (!title || !content) {
+        showKnowledgeMessage("标题和内容不能为空");
+        return;
+      }
+
+      knowledgeSaveButton.disabled = true;
+      knowledgeSaveButton.textContent = editingId ? "保存中..." : "新增中...";
+      showKnowledgeMessage(editingId ? "正在保存知识资料修改..." : "正在新增知识资料...");
+
+      try {
+        const payload = {
+          title,
+          content,
+          category,
+          sourceUrl,
+          sourceType
+        };
+        if (editingId) {
+          payload.id = Number(editingId);
+        }
+
+        const response = await fetch(editingId ? "/api/knowledge/update" : "/api/knowledge/add", {
+          method: editingId ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          showKnowledgeMessage(result.message || "知识资料新增失败");
+          return;
+        }
+
+        showKnowledgeMessage(result.message || (editingId ? "知识资料修改成功" : "知识资料新增成功"));
+        resetKnowledgeForm();
+        await loadKnowledgeList();
+      } catch (error) {
+        showKnowledgeMessage("知识资料保存失败，请确认后端服务已启动。");
+      } finally {
+        knowledgeSaveButton.disabled = false;
+        knowledgeSaveButton.textContent = knowledgeId.value ? "保存修改" : "新增知识资料";
+      }
+    });
+
+    knowledgeCancelEditButton.addEventListener("click", () => {
+      resetKnowledgeForm();
+      showKnowledgeMessage("已取消编辑知识资料");
+    });
+
+    knowledgeTableBody.addEventListener("click", async (event) => {
+      const button = event.target.closest("button[data-knowledge-action]");
+      if (!button) {
+        return;
+      }
+
+      if (button.dataset.knowledgeAction === "edit") {
+        startEditKnowledgeDoc(Number(button.dataset.id));
+        return;
+      }
+
+      if (button.dataset.knowledgeAction === "delete") {
+        await deleteKnowledgeDoc(Number(button.dataset.id), button);
+      }
+    });
 
     faqTableBody.addEventListener("click", async (event) => {
       const button = event.target.closest("button[data-action]");
@@ -280,7 +521,7 @@
       }
 
       if (button.dataset.action === "delete") {
-        await deleteFaq(id);
+        await deleteFaq(id, button);
       }
     });
 
@@ -292,16 +533,17 @@
 
       const id = Number(button.dataset.id);
       if (button.dataset.contributionAction === "approve") {
-        await reviewContribution(id, "approve");
+        await reviewContribution(id, "approve", button);
         return;
       }
 
       if (button.dataset.contributionAction === "reject") {
-        await reviewContribution(id, "reject");
+        await reviewContribution(id, "reject", button);
       }
     });
 
     async function loadFaqList() {
+      faqTableBody.innerHTML = '<tr><td colspan="7">正在加载 FAQ 数据...</td></tr>';
       try {
         const params = new URLSearchParams();
         const keyword = faqKeyword.value.trim();
@@ -395,10 +637,16 @@
       faqForm.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    async function deleteFaq(id) {
+    async function deleteFaq(id, button) {
       if (!window.confirm(`确认删除 FAQ #${id} 吗？`)) {
         return;
       }
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = "删除中...";
+      }
+      showFaqMessage(`正在删除 FAQ #${id}...`);
 
       try {
         const response = await fetch(`/api/faq/delete/${id}`, {
@@ -419,8 +667,14 @@
         await loadFaqList();
         await loadCategories();
         await loadStatOverview();
+        await loadHotQuestions();
       } catch (error) {
         showFaqMessage("FAQ 删除失败，请确认后端服务已启动。");
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = "删除";
+        }
       }
     }
 
@@ -475,11 +729,20 @@
       `;
     }
 
-    async function reviewContribution(id, action) {
+    async function reviewContribution(id, action, button) {
       const actionText = action === "approve" ? "通过" : "拒绝";
+      if (action === "approve" && !window.confirm(`确认通过贡献 #${id} 吗？`)) {
+        return;
+      }
       if (action === "reject" && !window.confirm(`确认拒绝贡献 #${id} 吗？`)) {
         return;
       }
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = `${actionText}中...`;
+      }
+      showContributionMessage(`正在${actionText}贡献 #${id}...`);
 
       try {
         const response = await fetch(`/api/contribution/${action}/${id}`, {
@@ -500,8 +763,14 @@
         await loadFaqList();
         await loadCategories();
         await loadStatOverview();
+        await loadHotQuestions();
       } catch (error) {
         showContributionMessage(`贡献${actionText}失败，请确认后端服务已启动。`);
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = actionText;
+        }
       }
     }
 
@@ -521,6 +790,297 @@
     function showContributionMessage(message) {
       contributionMessage.textContent = message;
       contributionMessage.style.display = "block";
+    }
+
+    async function importCsvFile() {
+      const file = faqCsvFile.files[0];
+      if (!file) {
+        showImportMessage("请选择 CSV 文件");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      csvImportButton.disabled = true;
+      csvImportButton.textContent = "导入中...";
+      showImportMessage("正在导入 CSV，请稍候...");
+
+      try {
+        const response = await fetch("/api/import/faq-csv", {
+          method: "POST",
+          body: formData
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          showImportMessage(result.message || "导入失败，请检查后端服务或文件格式");
+          return;
+        }
+
+        showImportResult(result.data);
+        faqCsvFile.value = "";
+        await refreshAfterImport();
+      } catch (error) {
+        showImportMessage("导入失败，请检查后端服务或文件格式");
+      } finally {
+        csvImportButton.disabled = false;
+        csvImportButton.textContent = "导入 CSV";
+      }
+    }
+
+    async function importJsonFaqs() {
+      const text = faqJsonText.value.trim();
+      if (!text) {
+        showImportMessage("请输入 FAQ JSON");
+        return;
+      }
+
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch (error) {
+        showImportMessage("JSON 格式错误，请检查输入内容");
+        return;
+      }
+
+      jsonImportButton.disabled = true;
+      jsonImportButton.textContent = "导入中...";
+      showImportMessage("正在批量导入 FAQ，请稍候...");
+
+      try {
+        const response = await fetch("/api/import/batch-faq", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          showImportMessage(result.message || "导入失败，请检查后端服务或文件格式");
+          return;
+        }
+
+        showImportResult(result.data);
+        await refreshAfterImport();
+      } catch (error) {
+        showImportMessage("导入失败，请检查后端服务或文件格式");
+      } finally {
+        jsonImportButton.disabled = false;
+        jsonImportButton.textContent = "批量导入";
+      }
+    }
+
+    async function loadImportHistory() {
+      importHistoryTableBody.innerHTML = '<tr><td colspan="7">正在加载导入历史...</td></tr>';
+      try {
+        const response = await fetch("/api/import/history");
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const histories = Array.isArray(result) ? result : (result.data || []);
+        if (!Array.isArray(histories) || histories.length === 0) {
+          importHistoryTableBody.innerHTML = '<tr><td colspan="7">暂无导入历史</td></tr>';
+          return;
+        }
+
+        importHistoryTableBody.innerHTML = histories.map(renderImportHistoryRow).join("");
+      } catch (error) {
+        importHistoryTableBody.innerHTML = '<tr><td colspan="7">导入历史加载失败，请确认后端服务已启动。</td></tr>';
+      }
+    }
+
+    function renderImportHistoryRow(history) {
+      return `
+        <tr>
+          <td>${history.id ?? ""}</td>
+          <td>${escapeHtml(history.fileName || "-")}</td>
+          <td>${escapeHtml(history.importType || "-")}</td>
+          <td>${history.successCount ?? 0}</td>
+          <td>${history.failCount ?? 0}</td>
+          <td>${escapeHtml(history.message || "-")}</td>
+          <td>${escapeHtml(history.createdAt || "-")}</td>
+        </tr>
+      `;
+    }
+
+    async function refreshAfterImport() {
+      await loadFaqList();
+      await loadImportHistory();
+      await loadCategories();
+      await loadStatOverview();
+      await loadHotQuestions();
+    }
+
+    function showImportResult(result) {
+      const failReasons = result?.failReasons || [];
+      const failHtml = failReasons.length > 0
+        ? `<div>失败原因：${failReasons.map(escapeHtml).join("；")}</div>`
+        : "";
+      importMessage.innerHTML = `
+        <div>成功条数：${result?.successCount ?? 0}</div>
+        <div>失败条数：${result?.failCount ?? 0}</div>
+        ${failHtml}
+      `;
+      importMessage.style.display = "block";
+    }
+
+    function showImportMessage(message) {
+      importMessage.textContent = message;
+      importMessage.style.display = "block";
+    }
+
+    async function loadKnowledgeList() {
+      knowledgeTableBody.innerHTML = '<tr><td colspan="7">正在加载知识资料...</td></tr>';
+      try {
+        const params = new URLSearchParams();
+        const keyword = knowledgeKeyword.value.trim();
+        if (keyword) {
+          params.set("keyword", keyword);
+        }
+
+        const url = params.toString() ? `/api/knowledge/list?${params.toString()}` : "/api/knowledge/list";
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success === false) {
+          throw new Error(result.message || "知识资料加载失败");
+        }
+
+        const docs = Array.isArray(result) ? result : (result.data || []);
+        currentKnowledgeDocs = docs;
+        if (!Array.isArray(docs) || docs.length === 0) {
+          currentKnowledgeDocs = [];
+          knowledgeTableBody.innerHTML = '<tr><td colspan="7">暂无知识资料</td></tr>';
+          return;
+        }
+
+        knowledgeTableBody.innerHTML = docs.map(renderKnowledgeRow).join("");
+      } catch (error) {
+        knowledgeTableBody.innerHTML = '<tr><td colspan="7">知识资料加载失败，请确认后端服务已启动。</td></tr>';
+      }
+    }
+
+    function renderKnowledgeRow(doc) {
+      const sourceUrl = doc.sourceUrl || "";
+      const sourceLink = sourceUrl
+        ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(sourceUrl)}</a>`
+        : "-";
+      return `
+        <tr>
+          <td>${doc.id ?? ""}</td>
+          <td>${escapeHtml(doc.title || "")}</td>
+          <td>${escapeHtml(doc.category || "-")}</td>
+          <td>${escapeHtml(doc.sourceType || "-")}</td>
+          <td>${sourceLink}</td>
+          <td>${escapeHtml(doc.createdAt || "-")}</td>
+          <td>
+            <button class="small-button primary" type="button" data-knowledge-action="edit" data-id="${doc.id}">编辑</button>
+            <button class="small-button danger" type="button" data-knowledge-action="delete" data-id="${doc.id}">删除</button>
+          </td>
+        </tr>
+      `;
+    }
+
+    function startEditKnowledgeDoc(id) {
+      const doc = currentKnowledgeDocs.find(item => Number(item.id) === id);
+      if (!doc) {
+        showKnowledgeMessage("未找到要编辑的知识资料");
+        return;
+      }
+
+      knowledgeId.value = doc.id;
+      knowledgeTitle.value = doc.title || "";
+      knowledgeContent.value = doc.content || "";
+      knowledgeCategory.value = doc.category || "";
+      knowledgeSourceUrl.value = doc.sourceUrl || "";
+      knowledgeSourceType.value = doc.sourceType || "";
+      knowledgeSaveButton.textContent = "保存修改";
+      knowledgeCancelEditButton.style.display = "inline-flex";
+      showKnowledgeMessage(`正在编辑知识资料 #${doc.id}`);
+      knowledgeForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function deleteKnowledgeDoc(id, button) {
+      if (!id) {
+        showKnowledgeMessage("未找到要删除的知识资料");
+        return;
+      }
+
+      if (!window.confirm("确认删除这条知识资料吗？")) {
+        return;
+      }
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = "删除中...";
+      }
+      showKnowledgeMessage("正在删除知识资料...");
+
+      try {
+        const response = await fetch(`/api/knowledge/delete/${id}`, {
+          method: "DELETE"
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          showKnowledgeMessage(result.message || "知识资料删除失败");
+          return;
+        }
+
+        showKnowledgeMessage(result.message || "知识资料删除成功");
+        if (String(id) === knowledgeId.value) {
+          resetKnowledgeForm();
+        }
+        await loadKnowledgeList();
+      } catch (error) {
+        showKnowledgeMessage("知识资料删除失败，请确认后端服务已启动。");
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = "删除";
+        }
+      }
+    }
+
+    function showKnowledgeMessage(message) {
+      knowledgeMessage.textContent = message;
+      knowledgeMessage.style.display = "block";
+    }
+
+    function resetKnowledgeForm() {
+      knowledgeId.value = "";
+      knowledgeForm.reset();
+      knowledgeSaveButton.textContent = "新增知识资料";
+      knowledgeCancelEditButton.style.display = "none";
+    }
+
+    async function withButtonLoading(button, loadingText, action) {
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = loadingText;
+      try {
+        await action();
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
     }
 
     async function loadStatOverview() {
@@ -554,25 +1114,73 @@
         const result = await response.json();
         const logs = Array.isArray(result) ? result : (result.data || []);
         if (!Array.isArray(logs) || logs.length === 0) {
-          queryLogTableBody.innerHTML = '<tr><td colspan="4">暂无查询记录</td></tr>';
+          queryLogTableBody.innerHTML = '<tr><td colspan="6">暂无查询记录</td></tr>';
           return;
         }
 
         queryLogTableBody.innerHTML = logs.map(renderQueryLogRow).join("");
       } catch (error) {
-        queryLogTableBody.innerHTML = '<tr><td colspan="4">查询记录加载失败，请确认后端服务已启动。</td></tr>';
+        queryLogTableBody.innerHTML = '<tr><td colspan="6">查询记录加载失败，请确认后端服务已启动。</td></tr>';
+      }
+    }
+
+    async function loadHotQuestions() {
+      try {
+        const response = await fetch("/api/qa/hot?limit=5");
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const hotQuestions = Array.isArray(result) ? result : (result.data || []);
+        if (!Array.isArray(hotQuestions) || hotQuestions.length === 0) {
+          hotQuestionList.textContent = "暂无热门问题数据。";
+          return;
+        }
+
+        hotQuestionList.innerHTML = hotQuestions
+          .map((faq, index) => `<div>${index + 1}. ${escapeHtml(faq.question || "")}（${faq.viewCount ?? 0} 次）</div>`)
+          .join("");
+      } catch (error) {
+        hotQuestionList.textContent = "热门问题加载失败，请确认后端服务已启动。";
       }
     }
 
     function renderQueryLogRow(log) {
+      const matchedType = log.matchedType || (log.matchedFaqId ? "FAQ" : "NONE");
+      const matchedTarget = formatMatchedTarget(log);
       return `
         <tr>
           <td>${log.id ?? ""}</td>
           <td>${escapeHtml(log.queryText || "")}</td>
-          <td>${log.matchedFaqId ?? "-"}</td>
+          <td>${escapeHtml(formatMatchedType(matchedType))}</td>
+          <td>${escapeHtml(matchedTarget)}</td>
+          <td>${log.matchScore ?? 0}</td>
           <td>${escapeHtml(log.createdAt || "-")}</td>
         </tr>
       `;
+    }
+
+    function formatMatchedType(matchedType) {
+      switch (matchedType) {
+        case "FAQ":
+          return "FAQ 命中";
+        case "KNOWLEDGE_DOC":
+          return "知识资料命中";
+        default:
+          return "未命中";
+      }
+    }
+
+    function formatMatchedTarget(log) {
+      const matchedType = log.matchedType || (log.matchedFaqId ? "FAQ" : "NONE");
+      if (matchedType === "FAQ") {
+        return log.matchedFaqId ? `FAQ #${log.matchedFaqId}` : "FAQ id 缺失";
+      }
+      if (matchedType === "KNOWLEDGE_DOC") {
+        return log.matchedKnowledgeId ? `知识资料 #${log.matchedKnowledgeId}` : "知识资料 id 缺失";
+      }
+      return "未命中";
     }
 
     function escapeHtml(value) {

@@ -20,10 +20,11 @@
     <section class="hero">
       <h1>校园生活问题快速查询</h1>
       <p>输入食堂、图书馆、宿舍报修、校园卡、打印、社团等相关问题，系统将从 FAQ 知识库中匹配答案。</p>
-      <form class="search-box" action="result.html">
-        <input class="input" name="q" placeholder="请输入你想查询的校园生活问题" value="图书馆什么时候开放？">
-        <button class="button" type="submit">搜索</button>
+      <form class="search-box" id="searchForm" action="result.html">
+        <input class="input" id="searchInput" name="q" placeholder="请输入你想查询的校园生活问题" value="图书馆什么时候开放？">
+        <button class="button" id="searchButton" type="submit">搜索</button>
       </form>
+      <div class="notice" id="searchMessage" style="display: none; margin-top: 12px;"></div>
     </section>
 
     <h2 class="section-title">热门问题</h2>
@@ -56,11 +57,31 @@
   </main>
 
   <script>
+    const searchForm = document.getElementById("searchForm");
+    const searchInput = document.getElementById("searchInput");
+    const searchButton = document.getElementById("searchButton");
+    const searchMessage = document.getElementById("searchMessage");
     const hotQuestionGrid = document.getElementById("hotQuestionGrid");
+
+    searchForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const keyword = searchInput.value.trim();
+      if (!keyword) {
+        showSearchMessage("请输入要查询的问题。", "error");
+        searchInput.focus();
+        return;
+      }
+
+      searchButton.disabled = true;
+      searchButton.textContent = "搜索中...";
+      showSearchMessage("正在进入查询结果页...", "success");
+      window.location.href = `result.html?q=${encodeURIComponent(keyword)}`;
+    });
 
     loadHotQuestions();
 
     async function loadHotQuestions() {
+      hotQuestionGrid.innerHTML = '<div class="notice">热门问题加载中...</div>';
       try {
         const response = await fetch("/api/qa/hot");
         if (!response.ok) {
@@ -76,7 +97,7 @@
 
         hotQuestionGrid.innerHTML = hotQuestions.map(renderHotQuestion).join("");
       } catch (error) {
-        hotQuestionGrid.innerHTML = '<div class="notice">热门问题加载失败</div>';
+        hotQuestionGrid.innerHTML = '<div class="notice error">热门问题加载失败，请确认后端服务已启动。</div>';
       }
     }
 
@@ -98,6 +119,12 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function showSearchMessage(message, type) {
+      searchMessage.textContent = message;
+      searchMessage.className = `notice ${type || ""}`;
+      searchMessage.style.display = "block";
     }
   </script>
 </body>

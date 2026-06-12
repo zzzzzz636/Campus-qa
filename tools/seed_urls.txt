@@ -1,0 +1,6 @@
+# 每行一个公开网页 URL。
+# 只填写无需登录、无需验证码、允许公开访问的页面。
+# 不要填写教务系统、统一身份认证、个人信息页面。
+
+https://www.scut.edu.cn/
+https://www.lib.scut.edu.cn/

@@ -65,12 +65,14 @@
       const category = categoryInput.value.trim();
 
       if (!question) {
-        showMessage("请输入问题");
+        showMessage("请输入问题", "error");
+        questionInput.focus();
         return;
       }
 
       submitButton.disabled = true;
-      showMessage("正在提交...");
+      submitButton.textContent = "提交中...";
+      showMessage("正在提交，请稍候...");
 
       try {
         const response = await fetch("/api/contribution/add", {
@@ -91,21 +93,23 @@
 
         const data = await response.json();
         if (!data.success) {
-          showMessage(data.message || "提交失败");
+          showMessage(data.message || "提交失败", "error");
           return;
         }
 
-        showMessage(data.message || "提交成功，等待管理员审核");
+        showMessage(data.message || "提交成功，等待管理员审核", "success");
         form.reset();
       } catch (error) {
-        showMessage("提交失败，请确认后端服务已启动。");
+        showMessage("提交失败，请确认后端服务已启动。", "error");
       } finally {
         submitButton.disabled = false;
+        submitButton.textContent = "提交，等待管理员审核";
       }
     });
 
-    function showMessage(message) {
+    function showMessage(message, type) {
       submitMessage.textContent = message;
+      submitMessage.className = `notice ${type || ""}`;
       submitMessage.style.display = "block";
     }
   </script>

@@ -27,12 +27,13 @@
       <p id="matchedQuestion">正在查询...</p>
       <p id="answerText">请稍候，系统正在从 FAQ 知识库中检索答案。</p>
       <div class="result-meta" id="resultMeta">
+        <span class="tag" id="matchTypeTag">匹配方式：-</span>
         <span class="tag" id="categoryTag">分类：-</span>
         <span class="tag green" id="sourceTag">来源：-</span>
         <span class="tag orange" id="viewCountTag">查询次数：-</span>
       </div>
       <div class="actions" id="notFoundActions" style="display: none; margin-top: 16px;">
-        <a class="button" href="contribute.html">提交问答建议</a>
+        <a class="button" href="contribute.html">补充问题</a>
       </div>
     </section>
 
@@ -59,9 +60,10 @@
     <section class="panel">
       <h2>反馈</h2>
       <div class="actions">
-        <button class="button secondary" type="button">有帮助</button>
+        <button class="button secondary" id="helpfulButton" type="button">有帮助</button>
         <a class="button" href="contribute.html">未解决，补充问题</a>
       </div>
+      <div class="notice" id="feedbackMessage" style="display: none; margin-top: 14px;"></div>
     </section>
   </main>
 
@@ -71,10 +73,18 @@
     const questionText = document.getElementById("questionText");
     const matchedQuestion = document.getElementById("matchedQuestion");
     const answerText = document.getElementById("answerText");
+    const matchTypeTag = document.getElementById("matchTypeTag");
     const categoryTag = document.getElementById("categoryTag");
     const sourceTag = document.getElementById("sourceTag");
     const viewCountTag = document.getElementById("viewCountTag");
     const notFoundActions = document.getElementById("notFoundActions");
+    const helpfulButton = document.getElementById("helpfulButton");
+    const feedbackMessage = document.getElementById("feedbackMessage");
+
+    helpfulButton.addEventListener("click", () => {
+      helpfulButton.disabled = true;
+      showFeedbackMessage("感谢反馈，已记录本次结果有帮助。", "success");
+    });
 
     if (q) {
       questionText.textContent = q;
@@ -85,41 +95,99 @@
     }
 
     async function loadAnswer(question) {
+      matchedQuestion.textContent = "正在查询...";
+      answerText.textContent = "请稍候，系统正在检索 FAQ 知识库和校园资料库。";
+      matchTypeTag.textContent = "匹配方式：查询中";
+      categoryTag.textContent = "分类：-";
+      sourceTag.textContent = "来源：-";
+      viewCountTag.textContent = "查询次数：-";
+      notFoundActions.style.display = "none";
+
       try {
         const response = await fetch(`/api/qa/search?question=${encodeURIComponent(question)}`);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
 
-        const data = await response.json();
-        if (!data.found) {
-          showNotFound(data.message || "暂未找到相关答案，请尝试换个关键词或提交问答建议。");
+        const payload = await response.json();
+        const data = payload.data || payload;
+        const sourceType = data.sourceType || (data.found ? "FAQ" : "NONE");
+
+        if (sourceType === "FAQ" && data.found !== false) {
+          showFaqResult(data);
           return;
         }
 
-        matchedQuestion.textContent = data.question || "已匹配到相关问题";
-        answerText.textContent = data.answer || "";
-        categoryTag.textContent = `分类：${data.category || "-"}`;
-        sourceTag.textContent = `来源：${data.source || "-"}`;
-        viewCountTag.textContent = `查询次数：${data.viewCount ?? 0}`;
-        notFoundActions.style.display = "none";
+        if (sourceType === "KNOWLEDGE_DOC" && data.found !== false) {
+          showKnowledgeResult(data);
+          return;
+        }
+
+        showNotFound(data.message || data.answer || "暂未找到相关答案，请尝试换个关键词或提交问答建议。");
       } catch (error) {
         matchedQuestion.textContent = "查询失败";
         answerText.textContent = "后端服务暂不可用，请确认 Spring Boot 已启动。";
+        matchTypeTag.textContent = "匹配方式：-";
         categoryTag.textContent = "分类：-";
         sourceTag.textContent = "来源：-";
         viewCountTag.textContent = "查询次数：-";
         notFoundActions.style.display = "none";
+        showFeedbackMessage("查询失败，请启动后端后重试。", "error");
       }
     }
 
+    function showFaqResult(data) {
+      matchedQuestion.textContent = data.question || "已匹配到相关问题";
+      answerText.textContent = data.answer || "";
+      matchTypeTag.textContent = "匹配方式：FAQ 知识库匹配";
+      categoryTag.textContent = `分类：${data.category || "-"}`;
+      sourceTag.textContent = `来源：${data.source || "-"}`;
+      viewCountTag.textContent = `查询次数：${data.viewCount ?? 0}`;
+      notFoundActions.style.display = "none";
+    }
+
+    function showKnowledgeResult(data) {
+      matchedQuestion.textContent = data.question || data.input || "已匹配到校园资料";
+      answerText.textContent = data.answer || "已从校园资料库找到相关内容。";
+      matchTypeTag.textContent = "匹配方式：根据校园资料库匹配";
+      categoryTag.textContent = `分类：${data.category || "-"}`;
+      sourceTag.innerHTML = buildSourceHtml(data);
+      viewCountTag.textContent = "查询次数：-";
+      notFoundActions.style.display = "none";
+    }
+
     function showNotFound(message) {
-      matchedQuestion.textContent = "未找到匹配答案";
+      matchedQuestion.textContent = "暂未找到相关答案";
       answerText.textContent = message || "暂未找到相关答案，请尝试换个关键词或提交问答建议。";
+      matchTypeTag.textContent = "匹配方式：未命中";
       categoryTag.textContent = "分类：-";
       sourceTag.textContent = "来源：-";
       viewCountTag.textContent = "查询次数：0";
       notFoundActions.style.display = "flex";
+    }
+
+    function showFeedbackMessage(message, type) {
+      feedbackMessage.textContent = message;
+      feedbackMessage.className = `notice ${type || ""}`;
+      feedbackMessage.style.display = "block";
+    }
+
+    function buildSourceHtml(data) {
+      if (data.sourceUrl) {
+        const url = escapeHtml(data.sourceUrl);
+        return `来源：<a href="${url}" target="_blank" rel="noreferrer">${url}</a>`;
+      }
+
+      return `来源：${escapeHtml(data.source || "-")}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
   </script>
 </body>

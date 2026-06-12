@@ -3,8 +3,8 @@ package com.campusqa.controller;
 import java.util.List;
 
 import com.campusqa.dto.ApiResponse;
+import com.campusqa.dto.QaSearchApiResponse;
 import com.campusqa.dto.QaSearchRequest;
-import com.campusqa.dto.QaSearchResult;
 import com.campusqa.model.Faq;
 import com.campusqa.service.QaSearchService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,13 +25,13 @@ public class QaController {
     }
 
     @GetMapping("/search")
-    public QaSearchResult search(@RequestParam(required = false) String question) {
-        return qaSearchService.search(question);
+    public QaSearchApiResponse search(@RequestParam(required = false) String question) {
+        return QaSearchApiResponse.from(qaSearchService.search(question));
     }
 
     @PostMapping("/search")
-    public QaSearchResult search(@RequestBody QaSearchRequest request) {
-        return qaSearchService.search(request);
+    public QaSearchApiResponse search(@RequestBody QaSearchRequest request) {
+        return QaSearchApiResponse.from(qaSearchService.search(request));
     }
 
     @GetMapping("/hot")

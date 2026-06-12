@@ -32,7 +32,7 @@
           <label for="password">密码</label>
           <input class="input" id="password" type="password" value="admin123">
         </div>
-        <button class="button" type="submit">登录</button>
+        <button class="button" id="loginButton" type="submit">登录</button>
         <div class="notice" id="loginMessage" style="display: none;"></div>
       </form>
     </section>
@@ -42,6 +42,7 @@
     const loginForm = document.getElementById("loginForm");
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
+    const loginButton = document.getElementById("loginButton");
     const loginMessage = document.getElementById("loginMessage");
 
     loginForm.addEventListener("submit", async (event) => {
@@ -51,9 +52,13 @@
       const password = passwordInput.value.trim();
 
       if (!username || !password) {
-        showMessage("请输入账号和密码");
+        showMessage("请输入账号和密码", "error");
         return;
       }
+
+      loginButton.disabled = true;
+      loginButton.textContent = "登录中...";
+      showMessage("正在登录，请稍候...");
 
       try {
         const response = await fetch("/api/admin/login", {
@@ -73,18 +78,23 @@
 
         const data = await response.json();
         if (data.success) {
+          showMessage(data.message || "登录成功，正在进入后台...", "success");
           window.location.href = "admin.html";
           return;
         }
 
-        showMessage(data.message || "账号或密码错误");
+        showMessage(data.message || "账号或密码错误", "error");
       } catch (error) {
-        showMessage("后端服务暂不可用，请确认 Spring Boot 已启动。");
+        showMessage("后端服务暂不可用，请确认 Spring Boot 已启动。", "error");
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "登录";
       }
     });
 
-    function showMessage(message) {
+    function showMessage(message, type) {
       loginMessage.textContent = message;
+      loginMessage.className = `notice ${type || ""}`;
       loginMessage.style.display = "block";
     }
   </script>
