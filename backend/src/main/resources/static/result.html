@@ -23,14 +23,17 @@
     </section>
 
     <section class="panel">
-      <h2>匹配答案</h2>
-      <p id="matchedQuestion">正在查询...</p>
-      <p id="answerText">请稍候，系统正在从 FAQ 知识库中检索答案。</p>
-      <div class="result-meta" id="resultMeta">
+      <h2 id="resultSectionTitle">匹配答案</h2>
+      <h3 id="matchedQuestion" style="margin-bottom: 12px; color: var(--primary);">正在查询...</h3>
+      <div id="answerText" style="line-height: 1.9; white-space: pre-wrap;">请稍候，系统正在从 FAQ 知识库中检索答案。</div>
+      <div class="result-meta" id="resultMeta" style="margin-top: 18px;">
         <span class="tag" id="matchTypeTag">匹配方式：-</span>
         <span class="tag" id="categoryTag">分类：-</span>
         <span class="tag green" id="sourceTag">来源：-</span>
         <span class="tag orange" id="viewCountTag">查询次数：-</span>
+      </div>
+      <div class="actions" id="sourceLinkAction" style="display: none; margin-top: 16px;">
+        <a class="button" id="sourceLinkButton" href="#" target="_blank" rel="noreferrer">查看原文</a>
       </div>
       <div class="actions" id="notFoundActions" style="display: none; margin-top: 16px;">
         <a class="button" href="contribute.html">补充问题</a>
@@ -71,12 +74,15 @@
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
     const questionText = document.getElementById("questionText");
+    const resultSectionTitle = document.getElementById("resultSectionTitle");
     const matchedQuestion = document.getElementById("matchedQuestion");
     const answerText = document.getElementById("answerText");
     const matchTypeTag = document.getElementById("matchTypeTag");
     const categoryTag = document.getElementById("categoryTag");
     const sourceTag = document.getElementById("sourceTag");
     const viewCountTag = document.getElementById("viewCountTag");
+    const sourceLinkAction = document.getElementById("sourceLinkAction");
+    const sourceLinkButton = document.getElementById("sourceLinkButton");
     const notFoundActions = document.getElementById("notFoundActions");
     const helpfulButton = document.getElementById("helpfulButton");
     const feedbackMessage = document.getElementById("feedbackMessage");
@@ -137,32 +143,45 @@
     }
 
     function showFaqResult(data) {
+      resultSectionTitle.textContent = "匹配答案";
       matchedQuestion.textContent = data.question || "已匹配到相关问题";
       answerText.textContent = data.answer || "";
       matchTypeTag.textContent = "匹配方式：FAQ 知识库匹配";
       categoryTag.textContent = `分类：${data.category || "-"}`;
       sourceTag.textContent = `来源：${data.source || "-"}`;
       viewCountTag.textContent = `查询次数：${data.viewCount ?? 0}`;
+      sourceLinkAction.style.display = "none";
       notFoundActions.style.display = "none";
     }
 
     function showKnowledgeResult(data) {
+      resultSectionTitle.textContent = "校园资料匹配结果";
       matchedQuestion.textContent = data.question || data.input || "已匹配到校园资料";
       answerText.textContent = data.answer || "已从校园资料库找到相关内容。";
-      matchTypeTag.textContent = "匹配方式：根据校园资料库匹配";
+      matchTypeTag.textContent = "匹配方式：校园资料库匹配";
       categoryTag.textContent = `分类：${data.category || "-"}`;
+      viewCountTag.textContent = `查询次数：${data.viewCount ?? 0}`;
+      // 显示查看原文按钮
+      const sourceUrl = data.sourceUrl || (data.data && data.data.sourceUrl);
+      if (sourceUrl) {
+        sourceLinkButton.href = sourceUrl;
+        sourceLinkAction.style.display = "flex";
+      } else {
+        sourceLinkAction.style.display = "none";
+      }
       sourceTag.innerHTML = buildSourceHtml(data);
-      viewCountTag.textContent = "查询次数：-";
       notFoundActions.style.display = "none";
     }
 
     function showNotFound(message) {
+      resultSectionTitle.textContent = "匹配答案";
       matchedQuestion.textContent = "暂未找到相关答案";
       answerText.textContent = message || "暂未找到相关答案，请尝试换个关键词或提交问答建议。";
       matchTypeTag.textContent = "匹配方式：未命中";
       categoryTag.textContent = "分类：-";
       sourceTag.textContent = "来源：-";
       viewCountTag.textContent = "查询次数：0";
+      sourceLinkAction.style.display = "none";
       notFoundActions.style.display = "flex";
     }
 

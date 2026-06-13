@@ -53,4 +53,22 @@ public class KnowledgeController {
     public ApiResponse<Void> delete(@PathVariable long id) {
         return knowledgeService.delete(id);
     }
+
+    /**
+     * 清理低质量资料（正文过短的数据）
+     * @param minLength 最小正文字符数，默认 50
+     */
+    @DeleteMapping("/cleanup")
+    public ApiResponse<java.util.Map<String, Object>> cleanup(
+            @RequestParam(required = false, defaultValue = "50") int minLength) {
+        return knowledgeService.cleanup(minLength);
+    }
+
+    /**
+     * 重置知识资料库：清空所有数据及关联查询日志（用于重新采集）
+     */
+    @DeleteMapping("/reset")
+    public ApiResponse<java.util.Map<String, Object>> reset() {
+        return knowledgeService.resetAll();
+    }
 }

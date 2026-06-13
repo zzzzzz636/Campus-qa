@@ -176,14 +176,32 @@
         <button class="button secondary" type="button" data-toggle-target="crawlerBody">展开</button>
       </div>
       <div class="collapsible-body" id="crawlerBody" hidden>
-      <p>读取 tools/seed_urls.txt 中的公开网址，最多采集 3 条，成功后直接写入知识资料库。</p>
+      <p>读取 tools/seed_urls.txt 中的公开网址，成功后直接写入知识资料库。</p>
       <div class="actions" style="margin: 16px 0;">
         <select class="select" id="crawlerLimit">
-          <option value="1">采集 1 条</option>
-          <option value="2">采集 2 条</option>
-          <option value="3" selected>采集 3 条</option>
+          <option value="3">采集 3 条</option>
+          <option value="5">采集 5 条</option>
+          <option value="10" selected>采集 10 条</option>
+          <option value="20">采集 20 条</option>
+          <option value="30">采集 30 条</option>
+        </select>
+        <select class="select" id="crawlerMaxDepth">
+          <option value="1">深度 1（仅种子页）</option>
+          <option value="2">深度 2（含子链接）</option>
+          <option value="3" selected>深度 3（推荐）</option>
+          <option value="4">深度 4（更深）</option>
         </select>
         <button class="button" id="crawlerRunButton" type="button">开始采集并入库</button>
+      </div>
+      <div class="actions" style="margin: 8px 0 16px 0; padding-top: 12px; border-top: 1px solid var(--border);">
+        <input class="input" id="crawlerSingleUrl" placeholder="输入单个公开 URL 进行采集" style="flex: 1; min-width: 360px; max-width: 640px;">
+        <select class="select" id="crawlerSingleMaxDepth">
+          <option value="1">深度 1</option>
+          <option value="2">深度 2</option>
+          <option value="3" selected>深度 3</option>
+          <option value="4">深度 4</option>
+        </select>
+        <button class="button secondary" id="crawlerRunOneButton" type="button">采集指定 URL</button>
       </div>
       <div class="notice" id="crawlerMessage" style="display: none; margin: 16px 0;"></div>
       <table class="table">
@@ -216,6 +234,7 @@
         <input class="input" id="knowledgeKeyword" placeholder="搜索知识资料">
         <button class="button" id="knowledgeSearchButton" type="button">搜索</button>
         <button class="button secondary" id="knowledgeResetButton" type="button">重置</button>
+        <button class="button danger" id="knowledgeCleanupButton" type="button" style="margin-left: auto;">清理低质量资料</button>
       </div>
 
       <form class="form" id="knowledgeForm" style="margin-bottom: 18px;">
@@ -257,13 +276,14 @@
             <th>分类</th>
             <th>来源类型</th>
             <th>来源链接</th>
+            <th>浏览次数</th>
             <th>创建时间</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody id="knowledgeTableBody">
           <tr>
-            <td colspan="7">正在加载知识资料...</td>
+            <td colspan="8">正在加载知识资料...</td>
           </tr>
         </tbody>
       </table>
@@ -347,7 +367,11 @@
     const importHistoryTableBody = document.getElementById("importHistoryTableBody");
     const importHistoryRefreshButton = document.getElementById("importHistoryRefreshButton");
     const crawlerLimit = document.getElementById("crawlerLimit");
+    const crawlerMaxDepth = document.getElementById("crawlerMaxDepth");
     const crawlerRunButton = document.getElementById("crawlerRunButton");
+    const crawlerSingleUrl = document.getElementById("crawlerSingleUrl");
+    const crawlerSingleMaxDepth = document.getElementById("crawlerSingleMaxDepth");
+    const crawlerRunOneButton = document.getElementById("crawlerRunOneButton");
     const crawlerMessage = document.getElementById("crawlerMessage");
     const crawlerResultTableBody = document.getElementById("crawlerResultTableBody");
     const knowledgeKeyword = document.getElementById("knowledgeKeyword");
@@ -361,6 +385,7 @@
     const knowledgeSourceUrl = document.getElementById("knowledgeSourceUrl");
     const knowledgeSourceType = document.getElementById("knowledgeSourceType");
     const knowledgeSaveButton = document.getElementById("knowledgeSaveButton");
+    const knowledgeCleanupButton = document.getElementById("knowledgeCleanupButton");
     const knowledgeCancelEditButton = document.getElementById("knowledgeCancelEditButton");
     const knowledgeMessage = document.getElementById("knowledgeMessage");
     const knowledgeTableBody = document.getElementById("knowledgeTableBody");
@@ -401,12 +426,14 @@
     csvImportButton.addEventListener("click", importCsvFile);
     jsonImportButton.addEventListener("click", importJsonFaqs);
     crawlerRunButton.addEventListener("click", runCrawler);
+    crawlerRunOneButton.addEventListener("click", runOneCrawler);
     knowledgeSearchButton.addEventListener("click", () => withButtonLoading(knowledgeSearchButton, "搜索中...", loadKnowledgeList));
     knowledgeResetButton.addEventListener("click", () => {
       knowledgeKeyword.value = "";
       showKnowledgeMessage("已重置知识资料搜索条件");
       loadKnowledgeList();
     });
+    knowledgeCleanupButton.addEventListener("click", cleanupKnowledge);
     knowledgeKeyword.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -1009,14 +1036,16 @@
     }
 
     async function runCrawler() {
-      const limit = crawlerLimit.value || "3";
+      const limit = crawlerLimit.value || "10";
+      const maxDepth = crawlerMaxDepth.value || "3";
       crawlerRunButton.disabled = true;
       crawlerRunButton.textContent = "采集中...";
       showCrawlerMessage("正在采集公开网页并写入知识资料库，请稍候...");
       crawlerResultTableBody.innerHTML = '<tr><td colspan="4">正在采集...</td></tr>';
 
       try {
-        const response = await fetch(`/api/crawler/run?limit=${encodeURIComponent(limit)}`, {
+        const params = new URLSearchParams({ limit, maxDepth });
+        const response = await fetch(`/api/crawler/run?${params.toString()}`, {
           method: "POST"
         });
         if (!response.ok) {
@@ -1039,6 +1068,46 @@
       } finally {
         crawlerRunButton.disabled = false;
         crawlerRunButton.textContent = "开始采集并入库";
+      }
+    }
+
+    async function runOneCrawler() {
+      const url = crawlerSingleUrl.value.trim();
+      if (!url) {
+        showCrawlerMessage("请输入要采集的公开 URL");
+        return;
+      }
+      const maxDepth = crawlerSingleMaxDepth.value || "3";
+      crawlerRunOneButton.disabled = true;
+      crawlerRunOneButton.textContent = "采集中...";
+      showCrawlerMessage("正在采集指定公开网页并写入知识资料库，请稍候...");
+      crawlerResultTableBody.innerHTML = '<tr><td colspan="4">正在采集...</td></tr>';
+
+      try {
+        const params = new URLSearchParams({ url, maxDepth });
+        const response = await fetch(`/api/crawler/run-one?${params.toString()}`, {
+          method: "POST"
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const data = result.data;
+        if (!data) {
+          showCrawlerMessage(result.message || "指定 URL 采集失败");
+          crawlerResultTableBody.innerHTML = '<tr><td colspan="4">暂无采集结果</td></tr>';
+          return;
+        }
+
+        showCrawlerResult(data);
+        await loadKnowledgeList();
+      } catch (error) {
+        showCrawlerMessage("指定 URL 采集失败，请确认后端服务已启动，且该 URL 可公开访问。");
+        crawlerResultTableBody.innerHTML = '<tr><td colspan="4">采集失败</td></tr>';
+      } finally {
+        crawlerRunOneButton.disabled = false;
+        crawlerRunOneButton.textContent = "采集指定 URL";
       }
     }
 
@@ -1075,7 +1144,7 @@
     }
 
     async function loadKnowledgeList() {
-      knowledgeTableBody.innerHTML = '<tr><td colspan="7">正在加载知识资料...</td></tr>';
+      knowledgeTableBody.innerHTML = '<tr><td colspan="8">正在加载知识资料...</td></tr>';
       try {
         const params = new URLSearchParams();
         const keyword = knowledgeKeyword.value.trim();
@@ -1098,13 +1167,31 @@
         currentKnowledgeDocs = docs;
         if (!Array.isArray(docs) || docs.length === 0) {
           currentKnowledgeDocs = [];
-          knowledgeTableBody.innerHTML = '<tr><td colspan="7">暂无知识资料</td></tr>';
+          knowledgeTableBody.innerHTML = '<tr><td colspan="8">暂无知识资料</td></tr>';
           return;
         }
 
         knowledgeTableBody.innerHTML = docs.map(renderKnowledgeRow).join("");
       } catch (error) {
-        knowledgeTableBody.innerHTML = '<tr><td colspan="7">知识资料加载失败，请确认后端服务已启动。</td></tr>';
+        knowledgeTableBody.innerHTML = '<tr><td colspan="8">知识资料加载失败，请确认后端服务已启动。</td></tr>';
+      }
+    }
+
+    function formatLocalTime(utcTimeStr) {
+      if (!utcTimeStr || utcTimeStr === "-") return "-";
+      try {
+        // SQLite CURRENT_TIMESTAMP 返回 UTC 时间
+        const date = new Date(utcTimeStr.replace(" ", "T") + "Z");
+        if (isNaN(date.getTime())) return utcTimeStr;
+        const y = date.getFullYear();
+        const mo = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        const h = String(date.getHours()).padStart(2, "0");
+        const mi = String(date.getMinutes()).padStart(2, "0");
+        const s = String(date.getSeconds()).padStart(2, "0");
+        return `${y}-${mo}-${d} ${h}:${mi}:${s}`;
+      } catch {
+        return utcTimeStr;
       }
     }
 
@@ -1120,7 +1207,8 @@
           <td>${escapeHtml(doc.category || "-")}</td>
           <td>${escapeHtml(doc.sourceType || "-")}</td>
           <td>${sourceLink}</td>
-          <td>${escapeHtml(doc.createdAt || "-")}</td>
+          <td>${doc.viewCount ?? 0}</td>
+          <td>${formatLocalTime(doc.createdAt)}</td>
           <td>
             <button class="small-button primary" type="button" data-knowledge-action="edit" data-id="${doc.id}">编辑</button>
             <button class="small-button danger" type="button" data-knowledge-action="delete" data-id="${doc.id}">删除</button>
@@ -1190,6 +1278,34 @@
           button.disabled = false;
           button.textContent = "删除";
         }
+      }
+    }
+
+    async function cleanupKnowledge() {
+      if (!window.confirm("确认清理低质量资料？\n\n系统将删除正文不足 50 字的资料（包括采集失败的噪音数据）。\n此操作不可恢复，建议先确认知识资料库中有不需要的内容。")) {
+        return;
+      }
+
+      knowledgeCleanupButton.disabled = true;
+      knowledgeCleanupButton.textContent = "清理中...";
+      showKnowledgeMessage("正在清理低质量资料...");
+
+      try {
+        const response = await fetch("/api/knowledge/cleanup?minLength=50", {
+          method: "DELETE"
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        showKnowledgeMessage(result.message || "清理完成");
+        await loadKnowledgeList();
+      } catch (error) {
+        showKnowledgeMessage("低质量资料清理失败，请确认后端服务已启动。");
+      } finally {
+        knowledgeCleanupButton.disabled = false;
+        knowledgeCleanupButton.textContent = "清理低质量资料";
       }
     }
 

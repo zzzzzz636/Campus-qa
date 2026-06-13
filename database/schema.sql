@@ -67,7 +67,9 @@ CREATE TABLE IF NOT EXISTS knowledge_doc (
     category TEXT,
     source_url TEXT,
     source_type TEXT NOT NULL DEFAULT 'MANUAL',
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    view_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS import_history (

@@ -21,7 +21,8 @@ public class QaSearchService {
 
     private static final int DEFAULT_HOT_LIMIT = 6;
     private static final int MAX_HOT_LIMIT = 50;
-    private static final int KNOWLEDGE_SUMMARY_LENGTH = 260;
+    private static final int KNOWLEDGE_SUMMARY_LENGTH = 500;
+    private static final int SUMMARY_HALF_WINDOW = 240;  // 关键词前后各取约 240 字
     private static final Pattern KEYWORD_SPLIT_PATTERN = Pattern.compile("[\\s,，。?？!！、;；:：]+");
 
     private final FaqRepository faqRepository;
@@ -109,16 +110,18 @@ public class QaSearchService {
 
     private QaSearchResult knowledgeResult(String input, KnowledgeDoc doc, int matchScore) {
         queryLogRepository.save(input, "KNOWLEDGE_DOC", null, doc.id(), matchScore);
+        knowledgeRepository.incrementViewCount(doc.id());
 
         String source = StringUtils.hasText(doc.sourceUrl()) ? doc.sourceUrl() : doc.sourceType();
+        int currentViewCount = (doc.viewCount() == null ? 0 : doc.viewCount()) + 1;
         return new QaSearchResult(
                 input,
                 doc.title(),
-                summarize(doc.content()),
+                summarize(doc.content(), input),
                 doc.category(),
                 source,
                 doc.sourceUrl(),
-                0,
+                currentViewCount,
                 true,
                 "KNOWLEDGE_DOC",
                 matchScore,
@@ -212,14 +215,16 @@ public class QaSearchService {
         }
 
         java.util.LinkedHashSet<String> parts = new java.util.LinkedHashSet<>();
+        // 按分隔符拆出的完整词直接加入
         for (String part : KEYWORD_SPLIT_PATTERN.split(normalized)) {
             if (StringUtils.hasText(part)) {
                 parts.add(part);
             }
         }
-        if (normalized.length() > 2) {
-            for (int i = 0; i <= normalized.length() - 2; i++) {
-                String part = normalized.substring(i, i + 2);
+        // 滑窗切词：用长度 3 的窗口而非 2，避免"电子图书"→"图书"误匹配"图书馆"
+        if (normalized.length() >= 3) {
+            for (int i = 0; i <= normalized.length() - 3; i++) {
+                String part = normalized.substring(i, i + 3);
                 if (StringUtils.hasText(part)) {
                     parts.add(part);
                 }
@@ -248,15 +253,72 @@ public class QaSearchService {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
-    private String summarize(String content) {
+    private String summarize(String content, String keyword) {
         if (!StringUtils.hasText(content)) {
             return "";
         }
-        String normalized = content.trim().replaceAll("\\s+", " ");
+        // 保留换行结构，只压缩行内多余空格
+        String normalized = content.trim()
+                .replaceAll("[ \t]+", " ")
+                .replaceAll(" ?\n ?", "\n");
         if (normalized.length() <= KNOWLEDGE_SUMMARY_LENGTH) {
             return normalized;
         }
-        return normalized.substring(0, KNOWLEDGE_SUMMARY_LENGTH) + "...";
+
+        // 尝试在正文中找到关键词位置，围绕关键词截取
+        String normalizedKeyword = keyword != null ? keyword.trim().toLowerCase(Locale.ROOT) : "";
+        if (!normalizedKeyword.isEmpty()) {
+            int idx = normalized.toLowerCase(Locale.ROOT).indexOf(normalizedKeyword);
+            if (idx >= 0) {
+                int start = Math.max(0, idx - SUMMARY_HALF_WINDOW);
+                int end = Math.min(normalized.length(), idx + normalizedKeyword.length() + SUMMARY_HALF_WINDOW);
+
+                // 向前调整到句号/换行之后（避免从半句开始）
+                int sentenceStart = -1;
+                for (int i = start; i < idx && i < start + 60; i++) {
+                    char c = normalized.charAt(i);
+                    if (c == '。' || c == '！' || c == '？' || c == '\n' || c == '；') {
+                        sentenceStart = i + 1;
+                    }
+                }
+                if (sentenceStart > start) {
+                    start = sentenceStart;
+                }
+
+                // 向后调整到句号结束
+                int sentenceEnd = -1;
+                for (int i = end; i < Math.min(normalized.length(), end + 80); i++) {
+                    char c = normalized.charAt(i);
+                    if (c == '。' || c == '！' || c == '？' || c == '\n') {
+                        sentenceEnd = i + 1;
+                        break;
+                    }
+                }
+                if (sentenceEnd > end) {
+                    end = sentenceEnd;
+                }
+
+                StringBuilder sb = new StringBuilder();
+                if (start > 0) sb.append("……");
+                sb.append(normalized, start, end);
+                if (end < normalized.length()) sb.append("……");
+                return sb.toString();
+            }
+        }
+
+        // 没找到关键词或关键词为空时，从开头截取，尽量在句号结束
+        int cutEnd = KNOWLEDGE_SUMMARY_LENGTH;
+        for (int i = cutEnd; i < Math.min(normalized.length(), cutEnd + 80); i++) {
+            char c = normalized.charAt(i);
+            if (c == '。' || c == '！' || c == '？') {
+                cutEnd = i + 1;
+                break;
+            }
+        }
+        if (cutEnd < normalized.length()) {
+            return normalized.substring(0, cutEnd) + "……";
+        }
+        return normalized.substring(0, cutEnd);
     }
 
     private int normalizeHotLimit(Integer limit) {
