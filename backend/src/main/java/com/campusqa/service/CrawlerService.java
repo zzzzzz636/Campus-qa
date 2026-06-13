@@ -11,14 +11,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.campusqa.dto.ApiResponse;
 import com.campusqa.dto.CrawlerPageResult;
 import com.campusqa.dto.CrawlerRunResult;
+import com.campusqa.model.KnowledgeDoc;
 import com.campusqa.repository.KnowledgeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,14 +31,23 @@ import org.springframework.util.StringUtils;
 public class CrawlerService {
 
     private static final int DEFAULT_LIMIT = 3;
-    private static final int MAX_LIMIT = 3;
+    private static final int MAX_LIMIT = 10;
+    private static final int MIN_CHINESE_CONTENT_LENGTH = 80;
+    private static final int MAX_DETAIL_LINKS_PER_SEED = 30;
     private static final String DEFAULT_CATEGORY = "校园资料";
     private static final String SOURCE_TYPE = "官网爬虫";
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(12);
     private static final Pattern TITLE_PATTERN = Pattern.compile("<title[^>]*>(.*?)</title>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    private static final Pattern SCRIPT_STYLE_PATTERN = Pattern.compile("<(script|style|noscript|svg|canvas)[^>]*>.*?</\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern NOISE_BLOCK_PATTERN = Pattern.compile("<(script|style|nav|header|footer|iframe|noscript|svg|canvas)[^>]*>.*?</\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern ARTICLE_MAIN_PATTERN = Pattern.compile("<(article|main)\\b[^>]*>(.*?)</\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern CONTENT_CONTAINER_PATTERN = Pattern.compile("<([a-zA-Z0-9]+)\\b(?=[^>]*(?:class|id)\\s*=\\s*['\"][^'\"]*(?:content|article|news|detail|text)[^'\"]*['\"])[^>]*>(.*?)</\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern DATA_FOCUS_URL_PATTERN = Pattern.compile("\\s*data-focus-url\\s*=\\s*(['\"]).*?\\1", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern ATTRIBUTE_RESIDUE_PATTERN = Pattern.compile("\\b(?:class|id|href|src|style|title|target|rel|alt|data-[\\w-]+)\\s*=\\s*(['\"]).*?\\1", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern SCRIPT_RESIDUE_PATTERN = Pattern.compile("\\b(?:function|var|let|const|window|document)\\b[^。！？；\\n]{0,160}", Pattern.CASE_INSENSITIVE);
     private static final Pattern TAG_PATTERN = Pattern.compile("<[^>]+>");
     private static final Pattern CHARSET_PATTERN = Pattern.compile("charset=([\\w\\-]+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern LINK_PATTERN = Pattern.compile("<a\\b[^>]*href\\s*=\\s*(['\"])(.*?)\\1[^>]*>(.*?)</a>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern FILE_LINK_PATTERN = Pattern.compile(".*\\.(?:jpg|jpeg|png|gif|webp|svg|ico|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z)(?:[?#].*)?$", Pattern.CASE_INSENSITIVE);
 
     private final KnowledgeRepository knowledgeRepository;
     private final HttpClient httpClient;
@@ -75,12 +87,29 @@ public class CrawlerService {
         int runLimit = normalizeLimit(limit);
         List<CrawlerPageResult> items = new ArrayList<>();
         int successCount = 0;
+        List<List<String>> targetGroups = urls.stream()
+                .map(this::discoverTargetUrls)
+                .toList();
 
-        for (String url : urls.stream().limit(runLimit).toList()) {
-            CrawlerPageResult item = crawlOne(url);
-            items.add(item);
-            if (item.success()) {
-                successCount++;
+        for (int index = 0; index < MAX_DETAIL_LINKS_PER_SEED && successCount < runLimit; index++) {
+            boolean hasMoreTargets = false;
+            for (List<String> targetUrls : targetGroups) {
+                if (index >= targetUrls.size()) {
+                    continue;
+                }
+                hasMoreTargets = true;
+                String targetUrl = targetUrls.get(index);
+                CrawlerPageResult item = crawlOne(targetUrl);
+                items.add(item);
+                if (item.success()) {
+                    successCount++;
+                }
+                if (successCount >= runLimit) {
+                    break;
+                }
+            }
+            if (!hasMoreTargets) {
+                break;
             }
         }
 
@@ -95,19 +124,22 @@ public class CrawlerService {
         }
 
         try {
-            if (knowledgeRepository.existsBySourceUrl(url)) {
-                return new CrawlerPageResult(url, null, null, false, "该 URL 已存在于知识资料库");
+            KnowledgeDoc existingDoc = knowledgeRepository.findBySourceUrl(url).orElse(null);
+            if (existingDoc != null) {
+                return new CrawlerPageResult(url, existingDoc.title(), existingDoc.id(), false, "该 URL 已存在于知识资料库");
             }
 
             FetchedPage page = fetchPage(url);
             String html = page.html();
             String title = extractTitle(html);
-            String content = extractContent(html);
-            if (!StringUtils.hasText(content)) {
-                if (!StringUtils.hasText(title)) {
-                    return new CrawlerPageResult(url, title, null, false, "页面正文为空");
-                }
-                content = "官网页面标题：" + title + "。来源页面：" + url;
+            String content = extractContent(html, title);
+            if (countChineseCharacters(content) < MIN_CHINESE_CONTENT_LENGTH) {
+                return new CrawlerPageResult(url, title, null, false, "正文内容过少或疑似列表页");
+            }
+
+            KnowledgeDoc similarDoc = findHighlySimilarDoc(title, content);
+            if (similarDoc != null) {
+                return new CrawlerPageResult(url, title, similarDoc.id(), false, "标题和正文与已有知识资料高度相似，已跳过");
             }
 
             Long id = knowledgeRepository.save(
@@ -129,6 +161,193 @@ public class CrawlerService {
             Thread.currentThread().interrupt();
             return new CrawlerPageResult(url, null, null, false, "采集被中断");
         }
+    }
+
+    private List<String> discoverTargetUrls(String seedUrl) {
+        if (!isAllowedPublicUrl(seedUrl)) {
+            return List.of(seedUrl);
+        }
+
+        try {
+            FetchedPage seedPage = fetchPage(seedUrl);
+            List<String> detailUrls = extractDetailLinks(seedUrl, seedPage.html());
+            if (!detailUrls.isEmpty()) {
+                return detailUrls;
+            }
+            return List.of(seedUrl);
+        } catch (IOException | InterruptedException | IllegalArgumentException ex) {
+            if (ex instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return List.of(seedUrl);
+        }
+    }
+
+    private List<String> extractDetailLinks(String seedUrl, String html) {
+        Set<String> seen = new LinkedHashSet<>();
+        List<LinkCandidate> candidates = new ArrayList<>();
+        URI baseUri = URI.create(seedUrl);
+        Matcher matcher = LINK_PATTERN.matcher(html);
+
+        while (matcher.find()) {
+            String rawHref = matcher.group(2);
+            if (!StringUtils.hasText(rawHref)) {
+                continue;
+            }
+
+            String absoluteUrl = normalizeDiscoveredUrl(baseUri, rawHref);
+            if (!StringUtils.hasText(absoluteUrl) || !seen.add(absoluteUrl)) {
+                continue;
+            }
+            if (!isAllowedDetailUrl(seedUrl, absoluteUrl)) {
+                continue;
+            }
+
+            String linkText = cleanText(stripTags(matcher.group(3)));
+            int score = scoreDetailLink(absoluteUrl, linkText);
+            if (score <= 0) {
+                continue;
+            }
+            candidates.add(new LinkCandidate(absoluteUrl, score));
+        }
+
+        candidates.sort((left, right) -> Integer.compare(right.score(), left.score()));
+        return candidates.stream()
+                .limit(MAX_DETAIL_LINKS_PER_SEED)
+                .map(LinkCandidate::url)
+                .toList();
+    }
+
+    private String normalizeDiscoveredUrl(URI baseUri, String rawHref) {
+        String href = rawHref.trim();
+        String lower = href.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("javascript:")
+                || lower.startsWith("#")
+                || lower.startsWith("mailto:")
+                || lower.startsWith("tel:")) {
+            return "";
+        }
+        try {
+            URI resolved = baseUri.resolve(href.split("#", 2)[0]).normalize();
+            String scheme = resolved.getScheme();
+            if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+                return "";
+            }
+            return resolved.toString();
+        } catch (IllegalArgumentException ex) {
+            return "";
+        }
+    }
+
+    private boolean isAllowedDetailUrl(String seedUrl, String targetUrl) {
+        if (!isAllowedPublicUrl(targetUrl) || isFileUrl(targetUrl)) {
+            return false;
+        }
+        if (!isSameSchoolDomain(seedUrl, targetUrl)) {
+            return false;
+        }
+        String normalized = targetUrl.toLowerCase(Locale.ROOT);
+        if (normalized.contains("search")
+                || normalized.contains("list")
+                || normalized.contains("index")
+                || normalized.endsWith("/")
+                || normalized.contains("category")
+                || normalized.contains("column")
+                || normalized.contains("node")) {
+            return normalized.contains("page.htm") || normalized.contains("/2026/") || normalized.contains("/2025/");
+        }
+        return true;
+    }
+
+    private int scoreDetailLink(String url, String linkText) {
+        String normalizedUrl = url.toLowerCase(Locale.ROOT);
+        int score = 0;
+        if (normalizedUrl.contains("page.htm")) {
+            score += 100;
+        }
+        if (normalizedUrl.contains("/2026/")) {
+            score += 80;
+        }
+        if (normalizedUrl.contains("/2025/")) {
+            score += 70;
+        }
+        if (normalizedUrl.matches(".*/\\d{4}/\\d{4}/.*")) {
+            score += 40;
+        }
+        if (StringUtils.hasText(linkText) && countChineseCharacters(linkText) >= 6) {
+            score += 20;
+        }
+        if (isLikelyListPage(url)) {
+            score -= 80;
+        }
+        return score;
+    }
+
+    private boolean isSameSchoolDomain(String seedUrl, String targetUrl) {
+        try {
+            String seedHost = URI.create(seedUrl).getHost();
+            String targetHost = URI.create(targetUrl).getHost();
+            if (!StringUtils.hasText(seedHost) || !StringUtils.hasText(targetHost)) {
+                return false;
+            }
+            seedHost = seedHost.toLowerCase(Locale.ROOT);
+            targetHost = targetHost.toLowerCase(Locale.ROOT);
+            if (seedHost.equals(targetHost)) {
+                return true;
+            }
+            if (seedHost.endsWith("scut.edu.cn") && targetHost.endsWith("scut.edu.cn")) {
+                return true;
+            }
+            String seedWithoutWww = seedHost.startsWith("www.") ? seedHost.substring(4) : seedHost;
+            String targetWithoutWww = targetHost.startsWith("www.") ? targetHost.substring(4) : targetHost;
+            return seedWithoutWww.equals(targetWithoutWww);
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    private boolean isFileUrl(String url) {
+        return FILE_LINK_PATTERN.matcher(url.toLowerCase(Locale.ROOT)).matches();
+    }
+
+    private boolean isLikelyListPage(String url) {
+        String normalized = url.toLowerCase(Locale.ROOT);
+        return normalized.endsWith("/")
+                || normalized.contains("list")
+                || normalized.contains("index")
+                || normalized.contains("search")
+                || normalized.contains("category")
+                || normalized.contains("column");
+    }
+
+    private KnowledgeDoc findHighlySimilarDoc(String title, String content) {
+        String normalizedTitle = normalizeComparableText(title);
+        String normalizedContent = normalizeComparableText(content);
+        if (!StringUtils.hasText(normalizedTitle) || normalizedContent.length() < 120) {
+            return null;
+        }
+
+        String contentSample = normalizedContent.substring(0, Math.min(normalizedContent.length(), 300));
+        for (KnowledgeDoc doc : knowledgeRepository.findAll(null, null)) {
+            String existingTitle = normalizeComparableText(doc.title());
+            String existingContent = normalizeComparableText(doc.content());
+            if (existingContent.length() < 120) {
+                continue;
+            }
+            String existingSample = existingContent.substring(0, Math.min(existingContent.length(), 300));
+            if (normalizedTitle.equals(existingTitle)
+                    && (existingContent.contains(contentSample) || normalizedContent.contains(existingSample))) {
+                return doc;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeComparableText(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
     }
 
     private FetchedPage fetchPage(String url) throws IOException, InterruptedException {
@@ -188,10 +407,27 @@ public class CrawlerService {
         }
         String normalized = url.toLowerCase(Locale.ROOT);
         return (normalized.startsWith("https://") || normalized.startsWith("http://"))
-                && !normalized.contains("login")
-                && !normalized.contains("auth")
-                && !normalized.contains("sso")
-                && !normalized.contains("jw");
+                && !containsForbiddenUrlKeyword(normalized)
+                && !isFileUrl(normalized);
+    }
+
+    private boolean containsForbiddenUrlKeyword(String normalizedUrl) {
+        return normalizedUrl.contains("login")
+                || normalizedUrl.contains("auth")
+                || normalizedUrl.contains("sso")
+                || normalizedUrl.contains("jw")
+                || normalizedUrl.contains("cas")
+                || normalizedUrl.contains("captcha")
+                || normalizedUrl.contains("verify")
+                || normalizedUrl.contains("password")
+                || normalizedUrl.contains("personal")
+                || normalizedUrl.contains("profile")
+                || normalizedUrl.contains("passport")
+                || normalizedUrl.contains("教务")
+                || normalizedUrl.contains("登录")
+                || normalizedUrl.contains("认证")
+                || normalizedUrl.contains("验证码")
+                || normalizedUrl.contains("个人信息");
     }
 
     private String decodeBody(HttpResponse<byte[]> response) {
@@ -220,10 +456,19 @@ public class CrawlerService {
         return cleanText(stripTags(matcher.group(1)));
     }
 
-    private String extractContent(String html) {
-        String withoutNoise = SCRIPT_STYLE_PATTERN.matcher(html).replaceAll(" ");
-        String body = extractBody(withoutNoise);
-        return cleanText(stripTags(body));
+    private String extractContent(String html, String title) {
+        String withoutNoise = removeNoiseBlocks(html);
+        List<String> candidates = new ArrayList<>();
+        collectMatches(ARTICLE_MAIN_PATTERN, withoutNoise, candidates);
+        collectMatches(CONTENT_CONTAINER_PATTERN, withoutNoise, candidates);
+        candidates.add(extractBody(withoutNoise));
+
+        return candidates.stream()
+                .map(this::cleanHtmlText)
+                .map(content -> trimToArticleContent(content, title))
+                .filter(StringUtils::hasText)
+                .max((left, right) -> Integer.compare(scoreContent(left), scoreContent(right)))
+                .orElse("");
     }
 
     private String extractBody(String html) {
@@ -241,14 +486,17 @@ public class CrawlerService {
     }
 
     private String stripTags(String value) {
-        String withoutTags = TAG_PATTERN.matcher(value).replaceAll(" ");
+        String normalized = DATA_FOCUS_URL_PATTERN.matcher(value).replaceAll(" ");
+        normalized = ATTRIBUTE_RESIDUE_PATTERN.matcher(normalized).replaceAll(" ");
+        String withoutTags = TAG_PATTERN.matcher(normalized).replaceAll(" ");
         return withoutTags
                 .replace("&nbsp;", " ")
                 .replace("&amp;", "&")
                 .replace("&lt;", "<")
                 .replace("&gt;", ">")
                 .replace("&quot;", "\"")
-                .replace("&#39;", "'");
+                .replace("&#39;", "'")
+                .replace("&#160;", " ");
     }
 
     private String cleanText(String value) {
@@ -256,6 +504,84 @@ public class CrawlerService {
             return "";
         }
         return value.replace('\u3000', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    private String removeNoiseBlocks(String html) {
+        return NOISE_BLOCK_PATTERN.matcher(html).replaceAll(" ");
+    }
+
+    private void collectMatches(Pattern pattern, String html, List<String> candidates) {
+        Matcher matcher = pattern.matcher(html);
+        while (matcher.find()) {
+            candidates.add(matcher.group(2));
+        }
+    }
+
+    private String cleanHtmlText(String html) {
+        String text = stripTags(html);
+        text = DATA_FOCUS_URL_PATTERN.matcher(text).replaceAll(" ");
+        text = ATTRIBUTE_RESIDUE_PATTERN.matcher(text).replaceAll(" ");
+        text = SCRIPT_RESIDUE_PATTERN.matcher(text).replaceAll(" ");
+        text = removeCommonNavigationText(text);
+        return cleanText(text);
+    }
+
+    private String removeCommonNavigationText(String value) {
+        String text = value;
+        text = text.replaceAll("(校报\\s*)?(微信\\s*)?(微博\\s*)?(华工主页\\s*)?导航", " ");
+        text = text.replaceAll("(首页\\s+){2,}", " ");
+        text = text.replaceAll("(查看更多\\s*){2,}", " ");
+        text = text.replaceAll("(上一页\\s*|下一页\\s*|返回顶部\\s*)+", " ");
+        text = text.replaceAll("分享到\\s*A\\+\\s*A-\\s*夜晚模式", " ");
+        text = text.replaceAll("相关文章\\s*返回\\s*原图\\s*/?", " ");
+        return text;
+    }
+
+    private String trimToArticleContent(String content, String title) {
+        String text = content;
+        if (StringUtils.hasText(title)) {
+            int titleIndex = text.indexOf(title);
+            if (titleIndex >= 0) {
+                text = text.substring(titleIndex);
+            }
+        }
+
+        int locationIndex = text.indexOf("当前位置：");
+        if (locationIndex >= 0 && locationIndex < 300) {
+            text = text.substring(locationIndex);
+        }
+
+        text = text.replaceAll("^当前位置：\\s*[^\\n。！？]{0,120}", " ");
+        text = text.replaceAll("时间：\\s*\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}\\s*供稿单位：[^\\s]{1,30}\\s*浏览量：\\s*\\d+", " ");
+        text = text.replaceAll("分享到\\s*A\\+\\s*A-\\s*夜晚模式", " ");
+        text = text.replaceAll("相关文章\\s*返回\\s*原图\\s*/?", " ");
+        return cleanText(text);
+    }
+
+    private int scoreContent(String content) {
+        int chineseCount = countChineseCharacters(content);
+        int score = Math.min(content.length(), 3000) + chineseCount * 3;
+        if (content.contains("版权所有") || content.contains("ICP备")) {
+            score -= 300;
+        }
+        if (content.contains("data-focus-url") || content.contains("function")) {
+            score -= 500;
+        }
+        return score;
+    }
+
+    private int countChineseCharacters(String value) {
+        if (!StringUtils.hasText(value)) {
+            return 0;
+        }
+        int count = 0;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c >= '\u4e00' && c <= '\u9fff') {
+                count++;
+            }
+        }
+        return count;
     }
 
     private int normalizeLimit(Integer limit) {
@@ -266,5 +592,8 @@ public class CrawlerService {
     }
 
     private record FetchedPage(String url, String html) {
+    }
+
+    private record LinkCandidate(String url, int score) {
     }
 }

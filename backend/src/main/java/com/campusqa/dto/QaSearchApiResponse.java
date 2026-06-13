@@ -13,7 +13,9 @@ public record QaSearchApiResponse(
         Integer viewCount,
         Boolean found,
         String sourceType,
-        Integer matchScore
+        Integer matchScore,
+        String title,
+        String summary
 ) {
     public static QaSearchApiResponse from(QaSearchResult result) {
         return new QaSearchApiResponse(
@@ -29,7 +31,9 @@ public record QaSearchApiResponse(
                 result.viewCount(),
                 result.found(),
                 result.sourceType(),
-                result.matchScore()
+                result.matchScore(),
+                result.title(),
+                result.summary()
         );
     }
 }

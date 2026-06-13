@@ -21,8 +21,12 @@ public class QaSearchService {
 
     private static final int DEFAULT_HOT_LIMIT = 6;
     private static final int MAX_HOT_LIMIT = 50;
-    private static final int KNOWLEDGE_SUMMARY_LENGTH = 260;
+    private static final int KNOWLEDGE_SUMMARY_LENGTH = 200;
     private static final Pattern KEYWORD_SPLIT_PATTERN = Pattern.compile("[\\s,，。?？!！、;；:：]+");
+    private static final Pattern DATA_ATTR_PATTERN = Pattern.compile("data-[a-zA-Z0-9_-]+\\s*=\\s*\"[^\"]*\"");
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
+    private static final Pattern HTML_ATTR_PATTERN = Pattern.compile("\\b[a-zA-Z_:][-a-zA-Z0-9_:.]*\\s*=\\s*(\"[^\"]*\"|'[^']*'|\\S+)");
+    private static final Pattern SCRIPT_REMAINDER_PATTERN = Pattern.compile("(?i)\\b(function|var|let|const|window|document)\\b[^。；;]{0,120}[;；]?");
 
     private final FaqRepository faqRepository;
     private final KnowledgeRepository knowledgeRepository;
@@ -59,6 +63,8 @@ public class QaSearchService {
                     false,
                     "NONE",
                     0,
+                    null,
+                    null,
                     "请输入问题"
             );
         }
@@ -79,7 +85,7 @@ public class QaSearchService {
                 .map(doc -> new ScoredKnowledgeDoc(doc, scoreKnowledgeDoc(doc, normalized, keywordParts)))
                 .filter(item -> item.matchScore() > 0)
                 .max((left, right) -> compareKnowledgeScore(left, right))
-                .map(item -> knowledgeResult(normalized, item.doc(), item.matchScore()))
+                .map(item -> knowledgeResult(normalized, item.doc(), item.matchScore(), keywordParts))
                 .orElseGet(() -> notFoundResult(normalized));
     }
 
@@ -103,18 +109,21 @@ public class QaSearchService {
                 true,
                 "FAQ",
                 matchScore,
+                null,
+                null,
                 "查询成功"
         );
     }
 
-    private QaSearchResult knowledgeResult(String input, KnowledgeDoc doc, int matchScore) {
+    private QaSearchResult knowledgeResult(String input, KnowledgeDoc doc, int matchScore, List<String> keywordParts) {
         queryLogRepository.save(input, "KNOWLEDGE_DOC", null, doc.id(), matchScore);
 
         String source = StringUtils.hasText(doc.sourceUrl()) ? doc.sourceUrl() : doc.sourceType();
+        String summary = summarizeAroundKeyword(doc.content(), input, keywordParts);
         return new QaSearchResult(
                 input,
                 doc.title(),
-                summarize(doc.content()),
+                summary,
                 doc.category(),
                 source,
                 doc.sourceUrl(),
@@ -122,6 +131,8 @@ public class QaSearchService {
                 true,
                 "KNOWLEDGE_DOC",
                 matchScore,
+                doc.title(),
+                summary,
                 "FAQ 未命中，已从知识资料库找到相关资料"
         );
     }
@@ -139,6 +150,8 @@ public class QaSearchService {
                 false,
                 "NONE",
                 0,
+                null,
+                null,
                 "暂未找到相关答案，请尝试换个关键词或提交问答建议。"
         );
     }
@@ -248,15 +261,65 @@ public class QaSearchService {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
-    private String summarize(String content) {
+    private String summarizeAroundKeyword(String content, String keyword, List<String> keywordParts) {
         if (!StringUtils.hasText(content)) {
             return "";
         }
-        String normalized = content.trim().replaceAll("\\s+", " ");
+
+        String normalized = cleanKnowledgeContent(content);
         if (normalized.length() <= KNOWLEDGE_SUMMARY_LENGTH) {
             return normalized;
         }
-        return normalized.substring(0, KNOWLEDGE_SUMMARY_LENGTH) + "...";
+
+        int keywordIndex = findKeywordIndex(normalized, keyword, keywordParts);
+        if (keywordIndex < 0) {
+            keywordIndex = 0;
+        }
+
+        int start = Math.max(0, keywordIndex - 70);
+        int end = Math.min(normalized.length(), start + KNOWLEDGE_SUMMARY_LENGTH);
+        if (end - start < KNOWLEDGE_SUMMARY_LENGTH) {
+            start = Math.max(0, end - KNOWLEDGE_SUMMARY_LENGTH);
+        }
+
+        String summary = normalized.substring(start, end).trim();
+        if (start > 0) {
+            summary = "..." + summary;
+        }
+        if (end < normalized.length()) {
+            summary = summary + "...";
+        }
+        return summary;
+    }
+
+    private int findKeywordIndex(String content, String keyword, List<String> keywordParts) {
+        String normalizedContent = normalizeText(content);
+        String normalizedKeyword = normalizeText(keyword);
+        if (StringUtils.hasText(normalizedKeyword)) {
+            int index = normalizedContent.indexOf(normalizedKeyword);
+            if (index >= 0) {
+                return index;
+            }
+        }
+
+        return keywordParts.stream()
+                .filter(part -> part.length() >= 2)
+                .mapToInt(normalizedContent::indexOf)
+                .filter(index -> index >= 0)
+                .min()
+                .orElse(-1);
+    }
+
+    private String cleanKnowledgeContent(String content) {
+        String cleaned = DATA_ATTR_PATTERN.matcher(content).replaceAll(" ");
+        cleaned = HTML_TAG_PATTERN.matcher(cleaned).replaceAll(" ");
+        cleaned = HTML_ATTR_PATTERN.matcher(cleaned).replaceAll(" ");
+        cleaned = SCRIPT_REMAINDER_PATTERN.matcher(cleaned).replaceAll(" ");
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+        if (!StringUtils.hasText(cleaned)) {
+            return "";
+        }
+        return cleaned;
     }
 
     private int normalizeHotLimit(Integer limit) {

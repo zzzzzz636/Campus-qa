@@ -216,6 +216,7 @@
         <input class="input" id="knowledgeKeyword" placeholder="搜索知识资料">
         <button class="button" id="knowledgeSearchButton" type="button">搜索</button>
         <button class="button secondary" id="knowledgeResetButton" type="button">重置</button>
+        <button class="button secondary" id="knowledgeCleanupButton" type="button">清理低质量资料</button>
       </div>
 
       <form class="form" id="knowledgeForm" style="margin-bottom: 18px;">
@@ -353,6 +354,7 @@
     const knowledgeKeyword = document.getElementById("knowledgeKeyword");
     const knowledgeSearchButton = document.getElementById("knowledgeSearchButton");
     const knowledgeResetButton = document.getElementById("knowledgeResetButton");
+    const knowledgeCleanupButton = document.getElementById("knowledgeCleanupButton");
     const knowledgeForm = document.getElementById("knowledgeForm");
     const knowledgeId = document.getElementById("knowledgeId");
     const knowledgeTitle = document.getElementById("knowledgeTitle");
@@ -407,6 +409,7 @@
       showKnowledgeMessage("已重置知识资料搜索条件");
       loadKnowledgeList();
     });
+    knowledgeCleanupButton.addEventListener("click", cleanupDirtyKnowledgeDocs);
     knowledgeKeyword.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -1190,6 +1193,40 @@
           button.disabled = false;
           button.textContent = "删除";
         }
+      }
+    }
+
+    async function cleanupDirtyKnowledgeDocs() {
+      if (!window.confirm("确认清理低质量爬虫资料吗？该操作只处理 knowledge_doc，不会影响 FAQ 和用户贡献数据。")) {
+        return;
+      }
+
+      knowledgeCleanupButton.disabled = true;
+      knowledgeCleanupButton.textContent = "清理中...";
+      showKnowledgeMessage("正在清理低质量知识资料...");
+
+      try {
+        const response = await fetch("/api/knowledge/cleanup-dirty", {
+          method: "DELETE"
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          showKnowledgeMessage(result.message || "低质量资料清理失败");
+          return;
+        }
+
+        const deletedCount = result.data?.deletedCount ?? 0;
+        showKnowledgeMessage(`${result.message || "清理完成"}，已删除 ${deletedCount} 条低质量资料。`);
+        await loadKnowledgeList();
+      } catch (error) {
+        showKnowledgeMessage("低质量资料清理失败，请确认后端服务已启动。");
+      } finally {
+        knowledgeCleanupButton.disabled = false;
+        knowledgeCleanupButton.textContent = "清理低质量资料";
       }
     }
 

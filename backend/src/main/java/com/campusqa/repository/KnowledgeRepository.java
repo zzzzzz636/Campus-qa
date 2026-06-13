@@ -68,6 +68,19 @@ public class KnowledgeRepository {
         return results.stream().findFirst();
     }
 
+    public Optional<KnowledgeDoc> findBySourceUrl(String sourceUrl) {
+        if (!StringUtils.hasText(sourceUrl)) {
+            return Optional.empty();
+        }
+        List<KnowledgeDoc> results = jdbcTemplate.query(
+                "SELECT id, title, content, COALESCE(category, '未分类') AS category, " +
+                        "source_url, source_type, created_at FROM knowledge_doc WHERE source_url = ?",
+                KNOWLEDGE_ROW_MAPPER,
+                sourceUrl.trim()
+        );
+        return results.stream().findFirst();
+    }
+
     public Long save(String title, String content, String category, String sourceUrl, String sourceType) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         PreparedStatementCreator statementCreator = connection -> {

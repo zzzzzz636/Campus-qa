@@ -3,6 +3,7 @@ package com.campusqa.controller;
 import java.util.List;
 
 import com.campusqa.dto.ApiResponse;
+import com.campusqa.dto.KnowledgeCleanupResult;
 import com.campusqa.dto.KnowledgeDocSaveRequest;
 import com.campusqa.model.KnowledgeDoc;
 import com.campusqa.service.KnowledgeService;
@@ -52,5 +53,10 @@ public class KnowledgeController {
     @DeleteMapping("/delete/{id}")
     public ApiResponse<Void> delete(@PathVariable long id) {
         return knowledgeService.delete(id);
+    }
+
+    @DeleteMapping("/cleanup-dirty")
+    public ApiResponse<KnowledgeCleanupResult> cleanupDirty() {
+        return knowledgeService.cleanupDirty();
     }
 }

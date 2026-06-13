@@ -23,7 +23,7 @@
     </section>
 
     <section class="panel">
-      <h2>匹配答案</h2>
+      <h2 id="resultTitle">查询结果</h2>
       <p id="matchedQuestion">正在查询...</p>
       <p id="answerText">请稍候，系统正在从 FAQ 知识库中检索答案。</p>
       <div class="result-meta" id="resultMeta">
@@ -34,6 +34,9 @@
       </div>
       <div class="actions" id="notFoundActions" style="display: none; margin-top: 16px;">
         <a class="button" href="contribute.html">补充问题</a>
+      </div>
+      <div class="actions" id="sourceActions" style="display: none; margin-top: 16px;">
+        <a class="button" id="sourceLinkButton" href="#" target="_blank" rel="noreferrer">查看来源网页</a>
       </div>
     </section>
 
@@ -71,6 +74,7 @@
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
     const questionText = document.getElementById("questionText");
+    const resultTitle = document.getElementById("resultTitle");
     const matchedQuestion = document.getElementById("matchedQuestion");
     const answerText = document.getElementById("answerText");
     const matchTypeTag = document.getElementById("matchTypeTag");
@@ -78,6 +82,8 @@
     const sourceTag = document.getElementById("sourceTag");
     const viewCountTag = document.getElementById("viewCountTag");
     const notFoundActions = document.getElementById("notFoundActions");
+    const sourceActions = document.getElementById("sourceActions");
+    const sourceLinkButton = document.getElementById("sourceLinkButton");
     const helpfulButton = document.getElementById("helpfulButton");
     const feedbackMessage = document.getElementById("feedbackMessage");
 
@@ -95,6 +101,7 @@
     }
 
     async function loadAnswer(question) {
+      resultTitle.textContent = "查询结果";
       matchedQuestion.textContent = "正在查询...";
       answerText.textContent = "请稍候，系统正在检索 FAQ 知识库和校园资料库。";
       matchTypeTag.textContent = "匹配方式：查询中";
@@ -102,6 +109,7 @@
       sourceTag.textContent = "来源：-";
       viewCountTag.textContent = "查询次数：-";
       notFoundActions.style.display = "none";
+      sourceActions.style.display = "none";
 
       try {
         const response = await fetch(`/api/qa/search?question=${encodeURIComponent(question)}`);
@@ -125,6 +133,7 @@
 
         showNotFound(data.message || data.answer || "暂未找到相关答案，请尝试换个关键词或提交问答建议。");
       } catch (error) {
+        resultTitle.textContent = "查询失败";
         matchedQuestion.textContent = "查询失败";
         answerText.textContent = "后端服务暂不可用，请确认 Spring Boot 已启动。";
         matchTypeTag.textContent = "匹配方式：-";
@@ -132,38 +141,56 @@
         sourceTag.textContent = "来源：-";
         viewCountTag.textContent = "查询次数：-";
         notFoundActions.style.display = "none";
+        sourceActions.style.display = "none";
         showFeedbackMessage("查询失败，请启动后端后重试。", "error");
       }
     }
 
     function showFaqResult(data) {
+      resultTitle.textContent = "匹配答案";
       matchedQuestion.textContent = data.question || "已匹配到相关问题";
       answerText.textContent = data.answer || "";
-      matchTypeTag.textContent = "匹配方式：FAQ 知识库匹配";
+      matchTypeTag.textContent = "FAQ 知识库匹配";
       categoryTag.textContent = `分类：${data.category || "-"}`;
       sourceTag.textContent = `来源：${data.source || "-"}`;
       viewCountTag.textContent = `查询次数：${data.viewCount ?? 0}`;
       notFoundActions.style.display = "none";
+      sourceActions.style.display = "none";
     }
 
     function showKnowledgeResult(data) {
-      matchedQuestion.textContent = data.question || data.input || "已匹配到校园资料";
-      answerText.textContent = data.answer || "已从校园资料库找到相关内容。";
-      matchTypeTag.textContent = "匹配方式：根据校园资料库匹配";
+      const title = data.title || data.question || data.input || "校园资料";
+      const summary = cleanSummary(data.summary || data.answer || "已从校园资料库找到相关内容。");
+      const sourceUrl = data.sourceUrl || "";
+
+      resultTitle.textContent = "校园资料匹配结果";
+      matchedQuestion.textContent = title;
+      answerText.textContent = summary;
+      matchTypeTag.textContent = "根据校园资料库匹配";
       categoryTag.textContent = `分类：${data.category || "-"}`;
-      sourceTag.innerHTML = buildSourceHtml(data);
-      viewCountTag.textContent = "查询次数：-";
+      sourceTag.textContent = `来源：${sourceUrl || data.source || "-"}`;
+      viewCountTag.textContent = `匹配分值：${data.matchScore ?? 0}`;
       notFoundActions.style.display = "none";
+      if (sourceUrl) {
+        sourceLinkButton.href = sourceUrl;
+        sourceActions.style.display = "flex";
+      } else {
+        sourceActions.style.display = "none";
+      }
     }
 
     function showNotFound(message) {
+      resultTitle.textContent = "暂未找到相关答案";
       matchedQuestion.textContent = "暂未找到相关答案";
-      answerText.textContent = message || "暂未找到相关答案，请尝试换个关键词或提交问答建议。";
-      matchTypeTag.textContent = "匹配方式：未命中";
+      answerText.textContent = message && message.includes("请输入")
+        ? message
+        : "你可以提交补充问题，等待管理员审核。";
+      matchTypeTag.textContent = "未命中";
       categoryTag.textContent = "分类：-";
       sourceTag.textContent = "来源：-";
       viewCountTag.textContent = "查询次数：0";
       notFoundActions.style.display = "flex";
+      sourceActions.style.display = "none";
     }
 
     function showFeedbackMessage(message, type) {
@@ -172,13 +199,17 @@
       feedbackMessage.style.display = "block";
     }
 
-    function buildSourceHtml(data) {
-      if (data.sourceUrl) {
-        const url = escapeHtml(data.sourceUrl);
-        return `来源：<a href="${url}" target="_blank" rel="noreferrer">${url}</a>`;
+    function cleanSummary(value) {
+      const cleaned = String(value || "")
+        .replace(/data-[a-zA-Z0-9_-]+\s*=\s*"[^"]*"/g, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\b[a-zA-Z_:][-a-zA-Z0-9_:.]*\s*=\s*("[^"]*"|'[^']*'|\S+)/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!cleaned) {
+        return "已从校园资料库找到相关内容。";
       }
-
-      return `来源：${escapeHtml(data.source || "-")}`;
+      return cleaned.length > 220 ? `${cleaned.slice(0, 220)}...` : cleaned;
     }
 
     function escapeHtml(value) {

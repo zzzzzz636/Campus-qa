@@ -11,6 +11,8 @@ public record QaSearchResult(
         Boolean found,
         String sourceType,
         Integer matchScore,
+        String title,
+        String summary,
         String message
 ) {
 }
