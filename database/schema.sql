@@ -85,7 +85,6 @@ CREATE INDEX IF NOT EXISTS idx_faq_question ON faq(question);
 CREATE INDEX IF NOT EXISTS idx_faq_enabled ON faq(enabled);
 CREATE INDEX IF NOT EXISTS idx_query_log_created_at ON query_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_query_log_found ON query_log(found);
-CREATE INDEX IF NOT EXISTS idx_query_log_matched_type ON query_log(matched_type);
 CREATE INDEX IF NOT EXISTS idx_contribution_status ON contribution(status);
 CREATE INDEX IF NOT EXISTS idx_contribution_category_id ON contribution(category_id);
 CREATE INDEX IF NOT EXISTS idx_import_history_created_at ON import_history(created_at);

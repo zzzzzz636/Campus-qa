@@ -19,7 +19,7 @@
   <main class="container">
     <section class="hero">
       <h1>管理员后台</h1>
-      <p>第一周静态原型展示 FAQ 管理、贡献审核、知识导入和热门问题统计入口。</p>
+      <p>用于维护 FAQ 主知识库、审核用户贡献、采集官网资料和查看系统运行记录。</p>
     </section>
 
     <section class="grid">
@@ -51,9 +51,11 @@
           </select>
           <button class="button" id="faqSearchButton" type="button">搜索</button>
           <button class="button secondary" id="faqResetButton" type="button">重置</button>
+          <button class="button secondary" type="button" data-toggle-target="faqManageBody">展开</button>
         </div>
       </div>
 
+      <div class="collapsible-body" id="faqManageBody" hidden>
       <form class="form" id="faqForm" style="margin-bottom: 18px;">
         <input id="faqId" type="hidden">
         <div class="grid">
@@ -100,6 +102,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </section>
 
     <section class="grid">
@@ -108,8 +111,8 @@
         <p id="pendingSummary">正在加载待审核贡献...</p>
       </div>
       <div class="card">
-        <h3>知识导入</h3>
-        <p>选择 CSV 文件批量导入 FAQ，字段包含问题、答案、分类、来源。</p>
+        <h3>资料采集</h3>
+        <p>官网公开资料可直接采集入知识资料库，无需再生成爬虫 CSV。</p>
       </div>
       <div class="card">
         <h3>热门统计</h3>
@@ -120,7 +123,13 @@
 
     <section class="panel">
       <div class="toolbar">
-        <h2>知识导入</h2>
+        <h2>FAQ 批量导入</h2>
+        <button class="button secondary" type="button" data-toggle-target="faqImportBody">展开</button>
+      </div>
+
+      <div class="collapsible-body" id="faqImportBody" hidden>
+      <p style="margin-bottom: 16px;">本区域只用于导入 FAQ 问答对，不用于官网爬虫资料。官网资料请使用“官网资料采集”。</p>
+      <div class="actions" style="margin-bottom: 16px;">
         <button class="button secondary" id="importHistoryRefreshButton" type="button">刷新历史</button>
       </div>
 
@@ -158,16 +167,55 @@
           </tr>
         </tbody>
       </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <h2>官网资料采集</h2>
+        <button class="button secondary" type="button" data-toggle-target="crawlerBody">展开</button>
+      </div>
+      <div class="collapsible-body" id="crawlerBody" hidden>
+      <p>读取 tools/seed_urls.txt 中的公开网址，最多采集 3 条，成功后直接写入知识资料库。</p>
+      <div class="actions" style="margin: 16px 0;">
+        <select class="select" id="crawlerLimit">
+          <option value="1">采集 1 条</option>
+          <option value="2">采集 2 条</option>
+          <option value="3" selected>采集 3 条</option>
+        </select>
+        <button class="button" id="crawlerRunButton" type="button">开始采集并入库</button>
+      </div>
+      <div class="notice" id="crawlerMessage" style="display: none; margin: 16px 0;"></div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>URL</th>
+            <th>标题</th>
+            <th>知识资料 id</th>
+            <th>结果</th>
+          </tr>
+        </thead>
+        <tbody id="crawlerResultTableBody">
+          <tr>
+            <td colspan="4">尚未执行采集</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
     </section>
 
     <section class="panel">
       <div class="toolbar">
         <h2>知识资料库</h2>
-        <div class="actions">
-          <input class="input" id="knowledgeKeyword" placeholder="搜索知识资料">
-          <button class="button" id="knowledgeSearchButton" type="button">搜索</button>
-          <button class="button secondary" id="knowledgeResetButton" type="button">重置</button>
-        </div>
+        <button class="button secondary" type="button" data-toggle-target="knowledgeBody">展开</button>
+      </div>
+
+      <div class="collapsible-body" id="knowledgeBody" hidden>
+      <p style="margin-bottom: 16px;">这里保存官网采集或人工录入的资料。用户搜索时，FAQ 未命中后会从这里补充匹配。</p>
+      <div class="actions" style="margin-bottom: 16px;">
+        <input class="input" id="knowledgeKeyword" placeholder="搜索知识资料">
+        <button class="button" id="knowledgeSearchButton" type="button">搜索</button>
+        <button class="button secondary" id="knowledgeResetButton" type="button">重置</button>
       </div>
 
       <form class="form" id="knowledgeForm" style="margin-bottom: 18px;">
@@ -219,11 +267,16 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </section>
 
     <section class="panel">
       <div class="toolbar">
         <h2>最近查询记录</h2>
+        <button class="button secondary" type="button" data-toggle-target="queryLogBody">展开</button>
+      </div>
+      <div class="collapsible-body" id="queryLogBody" hidden>
+      <div class="actions" style="margin-bottom: 16px;">
         <button class="button secondary" id="queryLogRefreshButton" type="button">刷新</button>
       </div>
       <table class="table">
@@ -243,10 +296,15 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </section>
 
     <section class="panel">
-      <h2>待审核贡献</h2>
+      <div class="toolbar">
+        <h2>待审核贡献</h2>
+        <button class="button secondary" type="button" data-toggle-target="contributionBody">展开</button>
+      </div>
+      <div class="collapsible-body" id="contributionBody" hidden>
       <table class="table">
         <thead>
           <tr>
@@ -265,6 +323,7 @@
         </tbody>
       </table>
       <div class="notice" id="contributionMessage" style="display: none; margin-top: 14px;"></div>
+      </div>
     </section>
   </main>
 
@@ -287,6 +346,10 @@
     const importMessage = document.getElementById("importMessage");
     const importHistoryTableBody = document.getElementById("importHistoryTableBody");
     const importHistoryRefreshButton = document.getElementById("importHistoryRefreshButton");
+    const crawlerLimit = document.getElementById("crawlerLimit");
+    const crawlerRunButton = document.getElementById("crawlerRunButton");
+    const crawlerMessage = document.getElementById("crawlerMessage");
+    const crawlerResultTableBody = document.getElementById("crawlerResultTableBody");
     const knowledgeKeyword = document.getElementById("knowledgeKeyword");
     const knowledgeSearchButton = document.getElementById("knowledgeSearchButton");
     const knowledgeResetButton = document.getElementById("knowledgeResetButton");
@@ -329,10 +392,15 @@
     loadPendingContributions();
     setInterval(loadPendingContributions, 5000);
 
+    document.querySelectorAll("[data-toggle-target]").forEach(button => {
+      button.addEventListener("click", () => toggleSection(button));
+    });
+
     queryLogRefreshButton.addEventListener("click", () => withButtonLoading(queryLogRefreshButton, "刷新中...", loadQueryLogs));
     importHistoryRefreshButton.addEventListener("click", () => withButtonLoading(importHistoryRefreshButton, "刷新中...", loadImportHistory));
     csvImportButton.addEventListener("click", importCsvFile);
     jsonImportButton.addEventListener("click", importJsonFaqs);
+    crawlerRunButton.addEventListener("click", runCrawler);
     knowledgeSearchButton.addEventListener("click", () => withButtonLoading(knowledgeSearchButton, "搜索中...", loadKnowledgeList));
     knowledgeResetButton.addEventListener("click", () => {
       knowledgeKeyword.value = "";
@@ -938,6 +1006,72 @@
     function showImportMessage(message) {
       importMessage.textContent = message;
       importMessage.style.display = "block";
+    }
+
+    async function runCrawler() {
+      const limit = crawlerLimit.value || "3";
+      crawlerRunButton.disabled = true;
+      crawlerRunButton.textContent = "采集中...";
+      showCrawlerMessage("正在采集公开网页并写入知识资料库，请稍候...");
+      crawlerResultTableBody.innerHTML = '<tr><td colspan="4">正在采集...</td></tr>';
+
+      try {
+        const response = await fetch(`/api/crawler/run?limit=${encodeURIComponent(limit)}`, {
+          method: "POST"
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const data = result.data;
+        if (!data) {
+          showCrawlerMessage(result.message || "采集失败，请检查后端服务或 URL 配置");
+          crawlerResultTableBody.innerHTML = '<tr><td colspan="4">暂无采集结果</td></tr>';
+          return;
+        }
+
+        showCrawlerResult(data);
+        await loadKnowledgeList();
+      } catch (error) {
+        showCrawlerMessage("采集失败，请确认后端服务已启动，且 seed_urls.txt 中的网址可公开访问。");
+        crawlerResultTableBody.innerHTML = '<tr><td colspan="4">采集失败</td></tr>';
+      } finally {
+        crawlerRunButton.disabled = false;
+        crawlerRunButton.textContent = "开始采集并入库";
+      }
+    }
+
+    function showCrawlerResult(result) {
+      showCrawlerMessage(`采集完成：成功 ${result.successCount ?? 0} 条，失败 ${result.failCount ?? 0} 条`);
+      const items = result.items || [];
+      if (items.length === 0) {
+        crawlerResultTableBody.innerHTML = '<tr><td colspan="4">暂无采集结果</td></tr>';
+        return;
+      }
+
+      crawlerResultTableBody.innerHTML = items.map(item => `
+        <tr>
+          <td>${escapeHtml(item.url || "-")}</td>
+          <td>${escapeHtml(item.title || "-")}</td>
+          <td>${item.knowledgeId ?? "-"}</td>
+          <td>${escapeHtml(item.message || (item.success ? "成功" : "失败"))}</td>
+        </tr>
+      `).join("");
+    }
+
+    function showCrawlerMessage(message) {
+      crawlerMessage.textContent = message;
+      crawlerMessage.style.display = "block";
+    }
+
+    function toggleSection(button) {
+      const target = document.getElementById(button.dataset.toggleTarget);
+      if (!target) {
+        return;
+      }
+      target.hidden = !target.hidden;
+      button.textContent = target.hidden ? "展开" : "收起";
     }
 
     async function loadKnowledgeList() {

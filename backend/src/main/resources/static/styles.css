@@ -184,6 +184,14 @@ a {
   margin-bottom: 20px;
 }
 
+.collapsible-body {
+  display: block;
+}
+
+.collapsible-body[hidden] {
+  display: none;
+}
+
 .section-title {
   margin: 32px 0 16px;
   font-size: 22px;

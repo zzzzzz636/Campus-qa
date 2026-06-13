@@ -89,6 +89,18 @@ public class KnowledgeRepository {
         return key == null ? null : key.longValue();
     }
 
+    public boolean existsBySourceUrl(String sourceUrl) {
+        if (!StringUtils.hasText(sourceUrl)) {
+            return false;
+        }
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM knowledge_doc WHERE source_url = ?",
+                Integer.class,
+                sourceUrl.trim()
+        );
+        return count != null && count > 0;
+    }
+
     public int update(long id, String title, String content, String category, String sourceUrl, String sourceType) {
         return jdbcTemplate.update(
                 "UPDATE knowledge_doc SET title = ?, content = ?, category = ?, source_url = ?, source_type = ? " +
