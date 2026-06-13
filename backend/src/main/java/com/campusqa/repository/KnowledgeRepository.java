@@ -23,7 +23,9 @@ public class KnowledgeRepository {
             rs.getString("category"),
             rs.getString("source_url"),
             rs.getString("source_type"),
-            rs.getString("created_at")
+            rs.getInt("view_count"),
+            rs.getString("created_at"),
+            rs.getString("updated_at")
     );
 
     private final JdbcTemplate jdbcTemplate;
@@ -35,7 +37,9 @@ public class KnowledgeRepository {
     public List<KnowledgeDoc> findAll(String keyword, String category) {
         StringBuilder sql = new StringBuilder(
                 "SELECT id, title, content, COALESCE(category, '未分类') AS category, " +
-                        "source_url, source_type, created_at FROM knowledge_doc WHERE 1 = 1"
+                        "source_url, source_type, COALESCE(view_count, 0) AS view_count, " +
+                        "created_at, COALESCE(updated_at, created_at) AS updated_at " +
+                        "FROM knowledge_doc WHERE 1 = 1"
         );
         ArrayList<Object> params = new ArrayList<>();
 
@@ -61,7 +65,9 @@ public class KnowledgeRepository {
     public Optional<KnowledgeDoc> findById(long id) {
         List<KnowledgeDoc> results = jdbcTemplate.query(
                 "SELECT id, title, content, COALESCE(category, '未分类') AS category, " +
-                        "source_url, source_type, created_at FROM knowledge_doc WHERE id = ?",
+                        "source_url, source_type, COALESCE(view_count, 0) AS view_count, " +
+                        "created_at, COALESCE(updated_at, created_at) AS updated_at " +
+                        "FROM knowledge_doc WHERE id = ?",
                 KNOWLEDGE_ROW_MAPPER,
                 id
         );
@@ -72,8 +78,8 @@ public class KnowledgeRepository {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         PreparedStatementCreator statementCreator = connection -> {
             var ps = connection.prepareStatement(
-                    "INSERT INTO knowledge_doc (title, content, category, source_url, source_type) " +
-                            "VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO knowledge_doc (title, content, category, source_url, source_type, created_at, updated_at) " +
+                            "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                     new String[]{"id"}
             );
             ps.setString(1, title);
@@ -87,6 +93,11 @@ public class KnowledgeRepository {
         jdbcTemplate.update(statementCreator, keyHolder);
         Number key = keyHolder.getKey();
         return key == null ? null : key.longValue();
+    }
+
+    public int incrementViewCount(long id) {
+        return jdbcTemplate.update(
+                "UPDATE knowledge_doc SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?", id);
     }
 
     public boolean existsBySourceUrl(String sourceUrl) {
@@ -103,8 +114,8 @@ public class KnowledgeRepository {
 
     public int update(long id, String title, String content, String category, String sourceUrl, String sourceType) {
         return jdbcTemplate.update(
-                "UPDATE knowledge_doc SET title = ?, content = ?, category = ?, source_url = ?, source_type = ? " +
-                        "WHERE id = ?",
+                "UPDATE knowledge_doc SET title = ?, content = ?, category = ?, source_url = ?, source_type = ?, " +
+                        "updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 title,
                 content,
                 category,
@@ -116,5 +127,40 @@ public class KnowledgeRepository {
 
     public int deleteById(long id) {
         return jdbcTemplate.update("DELETE FROM knowledge_doc WHERE id = ?", id);
+    }
+
+    /**
+     * 清理低质量资料：正文过短或为空的记录
+     * @return 删除条数
+     */
+    /**
+     * 重置知识资料库：清关联日志 → 清资料表 → 重置自增ID
+     * @return 删除条数
+     */
+    public int resetAll() {
+        // 只清理爬虫采集的数据，保留人工录入/导入的资料
+        jdbcTemplate.update(
+                "DELETE FROM query_log WHERE matched_knowledge_id IN " +
+                "(SELECT id FROM knowledge_doc WHERE source_type IN ('华工官网','官网爬虫','OFFICIAL','CRAWLER'))");
+        int deleted = jdbcTemplate.update(
+                "DELETE FROM knowledge_doc WHERE source_type IN ('华工官网','官网爬虫','OFFICIAL','CRAWLER')");
+        // 重置自增序列（只当全部清空时才重置）
+        Integer remaining = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM knowledge_doc", Integer.class);
+        if (remaining != null && remaining == 0) {
+            jdbcTemplate.update("DELETE FROM sqlite_sequence WHERE name='knowledge_doc'");
+        }
+        return deleted;
+    }
+
+    public int cleanupLowQuality(int minContentLength) {
+        return jdbcTemplate.update(
+                "DELETE FROM knowledge_doc WHERE LENGTH(COALESCE(content, '')) < ?",
+                minContentLength
+        );
+    }
+
+    public int countAll() {
+        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM knowledge_doc", Integer.class);
+        return count == null ? 0 : count;
     }
 }

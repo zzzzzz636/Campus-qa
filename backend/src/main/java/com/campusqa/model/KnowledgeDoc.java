@@ -7,6 +7,8 @@ public record KnowledgeDoc(
         String category,
         String sourceUrl,
         String sourceType,
-        String createdAt
+        Integer viewCount,
+        String createdAt,
+        String updatedAt
 ) {
 }

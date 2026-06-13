@@ -1,7 +1,31 @@
-# 每行一个公开网页 URL。
-# 只填写无需登录、无需验证码、允许公开访问的页面。
-# 不要填写教务系统、统一身份认证、个人信息页面。
+# ============================================
+# 华南理工大学 (SCUT) 校园信息采集种子 URL
+# 每行一个公开网页 URL，以 # 开头为注释
+# ============================================
 
+# --- 学校主站 ---
 https://www.scut.edu.cn/
+
+# --- 图书馆 ---
 https://www.lib.scut.edu.cn/
+
+# --- 华工新闻 ---
 https://news.scut.edu.cn/
+
+# --- 教务处（注意：部分内网页面需要校园网才能访问）---
+https://jwc.scut.edu.cn/
+
+# --- 后勤服务 ---
+https://hqfw.scut.edu.cn/
+
+# --- 学生工作处 ---
+https://www2.scut.edu.cn/xsc/
+
+# --- 保卫处 ---
+https://www2.scut.edu.cn/bwc/
+
+# --- 网络中心 ---
+https://www2.scut.edu.cn/net/
+
+# --- 校医院 ---
+https://xyy.scut.edu.cn/

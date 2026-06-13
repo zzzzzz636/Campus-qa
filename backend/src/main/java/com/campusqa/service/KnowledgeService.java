@@ -91,6 +91,33 @@ public class KnowledgeService {
         return ApiResponse.success("知识资料删除成功", null);
     }
 
+    /**
+     * 重置知识资料库：清空所有资料及关联查询日志
+     */
+    @Transactional
+    public ApiResponse<java.util.Map<String, Object>> resetAll() {
+        int countBefore = knowledgeRepository.countAll();
+        int deleted = knowledgeRepository.resetAll();
+        java.util.Map<String, Object> info = new java.util.HashMap<>();
+        info.put("deleted", deleted);
+        info.put("remaining", countBefore - deleted);
+        return ApiResponse.success("已清空 " + deleted + " 条知识资料，可以重新采集了", info);
+    }
+
+    /**
+     * 清理低质量资料：正文少于指定长度的记录
+     */
+    @Transactional
+    public ApiResponse<java.util.Map<String, Object>> cleanup(int minContentLength) {
+        int countBefore = knowledgeRepository.countAll();
+        int deleted = knowledgeRepository.cleanupLowQuality(minContentLength);
+        int countAfter = countBefore - deleted;
+        java.util.Map<String, Object> info = new java.util.HashMap<>();
+        info.put("deleted", deleted);
+        info.put("remaining", countAfter);
+        return ApiResponse.success("已清理 " + deleted + " 条低质量资料，剩余 " + countAfter + " 条", info);
+    }
+
     private String validateRequired(KnowledgeDocSaveRequest request) {
         if (request == null) {
             return "请求体不能为空";
